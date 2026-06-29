@@ -1,68 +1,39 @@
-# APEX rebuild — pick up here (paused 2026-06-28)
+# APEX — pick up here (updated 2026-06-29)
 
-Resuming the personal fitness-plan app rebuild. Framework is **built and verified**;
-next session = design the real plan + wire data. Read this top-to-bottom to resume.
+The real 4-week block is **seeded and live**. Pearce is running Week 1 and reports
+back **Mon 2026-07-06** with an export + how everything felt. Read this to resume.
 
 ## Where things stand
-- New project at `C:\Users\daysh\apex\` (git initialized, not committed/pushed yet).
-- Framework done: `index.html`, `styles.css`, `program.js` (THE PLAN — data only),
-  `app.js` (router/render/logging), `timer.js` (interval+rest), `sw.js`, `manifest`.
-- Verified booting + all 5 views render + logging persists (jsdom smoke test passes:
-  `node smoke-test.mjs`). Serve with `npx http-server -p 8137` (Python isn't installed).
-- `program.js` holds a PLACEHOLDER week only — the real plan replaces it.
+- Project at `C:\Users\daysh\apex\` (git committed locally, no remote yet).
+- `program.js` now holds the **real research-backed 4-week block** (not the placeholder).
+  Built via a `makeWeek(params)` generator — weeks share one template, only loads/volumes
+  progress. Wk1–3 progressive, Wk4 deload + re-test.
+- `app.js` logging upgraded: **per-set weight/reps/note** for lifts, **watch-run log**
+  (distance/time/pace/avg+max HR/note) for runs, done+note for holds/plyos.
+- **Export** is now self-describing (resolves keys → week/day/exercise names) so the JSON
+  is readable standalone when Pearce hands it back. Profile → Export data.
+- Serve: `npx http-server -p 8137` (Python not installed). Smoke test: `node smoke-test.mjs`.
 
-## What Pearce wants (confirmed this session)
-One all-inclusive **6-day** plan. Every day a DIFFERENT flavor, all feeding **four pillars**:
-1. **Running / endurance** (a PRIORITY) — mostly OFF-track; **≤1 track day/week** for now.
-   Real distance, e.g. a 10k run day, not just 5k.
-2. **Strength** — wants to be super strong, "throw weight around like nothing."
-3. **Physique** — 8-pack, lats, **big strong legs**; strong AND aesthetic.
-4. **Mobility / flexibility** — woven in: full flexibility routines, mobility, and deep
-   hip/joint prehab (90/90 hip work, tib raises, hip rotations, etc.).
+## The plan (confirmed + seeded)
+6 days, fixed-but-moveable, 4 pillars (run priority / strength / physique / mobility),
+research-backed throughout (frequency 2x/wk, full force-velocity curve for power, 80/20
+polarized running, de Salles/Schoenfeld rest intervals, HSR Achilles + band leg curls,
+head-to-toe prehab baked into every day):
+- D1 Lower (power+strength), D2 Upper (power+strength), D3 Swim+mobility,
+  D4 Sprint speed (1 track day, sprint-focused), D5 Long Zone-2 run (continuous ramp),
+  D6 KB/circuit+flexibility, D7 Rest.
+- Exact loads seeded off his real numbers (squat 235×5/~290, bench 215×5, OHP 135–145,
+  pull-ups 18–23, PC ~220 1.5y ago, 5k ~9:30, gasses after 50m swim). Bar caps 215.
 
-Day-type ideas he named: long run; swim day (casual swimmer, has pool); **one-kettlebell
-full-body intense circuit** (he owns ONE ~40lb KB); a hard circuit day; a hard strength day;
-≤1 track day; flexibility/mobility days layered on top of other work.
+## Open items
+1. **Week-1 report (Mon 2026-07-06):** review his export, adjust loads, build the NEXT block.
+   Todoist task set (Fitness project).
+2. **Data storage** — still localStorage only, by his call ("don't want to wire up Supabase
+   for now"). Export = the handoff mechanism. Revisit if he wants history/sync later.
+3. **Garmin MCP** — still PARKED. Watch data is hand-entered into the run log for now.
 
-**Schedule:** everything ASSIGNED to specific days at the start, but he can MOVE sessions
-around. (app already supports opening any day; reordering UI is a possible nice-to-have.)
-
-## Open items for tomorrow
-1. **Equipment checklist** — he asked me to list everything I think this plan needs; he'll
-   confirm what he has. DRAFT BELOW — present it first thing.
-2. **Design the weekly template** — map the 4 pillars across 6 days as a fixed-but-moveable
-   week. Then fill `program.js` with the real block (likely 4–8 weeks w/ progression).
-3. **Data storage decision** — he wants Astra to read all in-app logs, but kept SEPARATE
-   from Lane One's data. Options: (a) NEW Supabase project, or (b) Google Cloud tables.
-   Decide, then wire the app to sync logs there. (Interim: read localStorage via debug
-   Chrome — run `launch-chrome-debug.cmd`, then `eval_js` on the running app.)
-4. **Garmin MCP** — PARKED. He's deciding. Would need a local server logging into Garmin
-   Connect with his creds (.env) to pull runs/HR/sleep. Revisit when he says go.
-
-## Known baselines (already on file — don't re-ask)
-6'0", 175lb (open to ~185, lean). Bench ~235 / Squat ~290–300 / DL ~315. Home gym: barbell,
-squat rack, pull-up bar, DBs to 60lb, plates to ~250lb total (can't go truly heavy).
-Run ~5mi/wk, 2mi @ ~9:00, **goal sub-23:00 5k**. Achilles ~99% — warm up thoroughly.
-NEW: ~40lb kettlebell (x1), reliable pool access (casual swimmer).
-
-## Equipment checklist DRAFT (confirm have / don't have)
-Have (on file): barbell + plates (~250lb), squat rack, pull-up bar, DBs to 60lb, ~40lb KB,
-pool access, Garmin watch.
-Ask about:
-- Adjustable bench (flat/incline)
-- Resistance bands — mini/loop bands + long/pull-apart bands
-- Medicine ball / slam ball (power circuits)
-- Jump rope
-- Plyo box (jumps, step-ups)
-- Foam roller + lacrosse/massage ball (mobility)
-- Yoga mat
-- Ab wheel (core/8-pack)
-- Dip station / parallettes
-- Gymnastic rings or TRX/suspension trainer
-- Yoga blocks + strap (splits/flexibility)
-- Weight vest (running/calisthenics overload)
-- Trap/hex bar (heavy legs w/o lower-back load — fits Achilles/back caution)
-- Heavier/second kettlebell (currently only one 40lb)
-- Hurdles or agility ladder (drills, he's an ex-hurdler)
-- Massage gun
-- Sandbag (odd-object strength/conditioning)
+## Known baselines (don't re-ask) — see program.js `athlete` block
+6'0", 175lb. Home gym: barbell+plates 215 total, squat rack, pull-up bar, DBs 5–60 (NO 30),
+one 40lb KB, adjustable bench (incl. decline), bands L/M/H, agility ladder, 14lb med ball
+(no wall throws), jump rope, ab wheel, foam roller+lacrosse, massage gun, 18" ice-chest box,
+25m pool. Achilles ~99% — warm up. Goal sub-23 5k + jump high + strong/aesthetic.
