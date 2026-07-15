@@ -125,15 +125,15 @@ function upperDay(w){
         'DB between the feet or a loaded pack. Full hang to chin over the bar. You do 18–23 bodyweight, so we load them into the strength range.'),
       lift('Overhead Press (strict)', setsFor(w,3), 8, w.ohp, '2-3 min',
         'No leg drive — strict. Builds the raw shoulder strength under the push press.'),
-      lift('DB Row', setsFor(w,3), 10, '50 lb', '2 min',
-        'One hand + knee on the bench, row the DB to the hip, squeeze the lat. (60 is your uncomfortable max — 50 lets you own all 10 with clean form.)'),
+      lift('DB Row', setsFor(w,3), 10, '55 lb', '2 min',
+        'One hand + knee on the bench, row the DB to the hip, squeeze the lat. (Wk-1 review: 50 felt too light — 55 loads the lats properly while you still own all 10; 60 is your uncomfortable max.)'),
       lift('Incline DB Press', setsFor(w,3), 10, '50 lb', '2 min',
         'Bench at ~30–45°. Upper-chest builder for the physique pillar.'),
     ]),
 
     sec('physique', [
-      lift('DB Pullover', 3, 12, '35 lb', '90s',
-        'Lie on the bench, DB over chest, lower it back behind your head with a slight elbow bend, pull it back over. Lats + serratus.'),
+      lift('DB Pullover', 3, 12, '45 lb', '90s',
+        'Lie on the bench, DB over chest, lower it back behind your head with a slight elbow bend, pull it back over. Lats + serratus. (Wk-1 review: 35 was too light — 45 gives the lats a real stretch under load.)'),
       lift('Curl + Tricep Ext (superset)', 3, 12, '25 lb each', '90s',
         'Standard DB curl, then overhead DB tricep extension, back to back.'),
       lift('Ab Wheel (from knees)', 3, 8, 'Bodyweight', '90s',
@@ -143,11 +143,13 @@ function upperDay(w){
     sec('prehab', [
       lift('Band External Rotation', 3, 15, 'Light/medium band', '60s',
         'Elbow pinned to your side, rotate the forearm outward. Rotator-cuff health.'),
+      lift('Eccentric Wrist Extension (Tyler Twist)', 3, 15, 'Light DB or band · 3–4s eccentric', '60s',
+        'Lateral-elbow (tennis elbow) prehab — your recurring flare. Palm-down, extend the wrist UP (assist with the other hand to lift if needed), then lower SLOWLY over 3–4s. The slow eccentric on the wrist EXTENSORS is what rebuilds the tendon. Do this on off-days too when the elbow is cranky.'),
       lift('Wrist Curl + Reverse', 2, 15, '15 lb · slow eccentric', '45s',
         'Forearms on thigh, curl the wrist up and lower slow; then flip palm-down for the reverse. Elbow/wrist tendon health.'),
       lift('Forearm Pronation/Supination', 2, '12/side', 'Light DB held at one end', '45s',
         'Rotate palm-up to palm-down under control. Wrist + elbow.'),
-    ]),
+    ], 'Lateral elbow is a recurring flare — the eccentric wrist extension above is the priority. Keep direct tricep + heavy grip work MODERATE (no maxing) while it settles.'),
   ]);
 }
 
@@ -186,6 +188,7 @@ function sprintDay(w){
       note('~12 min, thorough — Achilles priority: easy jog 5 min · leg swings · A-skips 2×20m · B-skips 2×20m · high knees 2×20m · ankle/calf prep · 3 build-up strides 60→80→90%.'),
     ]),
     sec('sprint', [
+      note('NO TRACK? Don\'t skip this day — it keeps getting dropped for track access, and it\'s a priority day. Fallback: run the accelerations on flat grass/turf or a quiet flat stretch of road/path (cones or landmarks at 20–30m), same full recovery. For max-velocity, use a ~40–60m flat open stretch or a very slight grass downhill. If there\'s truly no runway, substitute 6–8 × ~5s HILL sprints (near-max, full walk-down recovery) — builds the same power without the top-end distance. The rule: you sprint SOMETHING today.'),
       run('Acceleration', 'sprint', { reps:w.accel, distance:'20–30m', pace:'max, from standing/3-point start', rest:'walk-back + 2–3 min',
         notes:'Drive out low and hard, push the ground back, gradual rise. The first ~5m is everything. Full recovery so every rep is fresh.' }),
       run('Max Velocity', 'sprint', { reps:w.maxV, distance:'40–60m', pace:'95–100%', rest:'3–4 min',
@@ -204,8 +207,8 @@ function sprintDay(w){
 function longRunDay(w){
   return day('Long Aerobic Run (Zone 2)', 'run', [
     sec('run', [
-      run('Long Run', 'long', { distance:w.longRun, pace:'easy / conversational (~10:30–11:00/mi)',
-        notes:w.longNote+' 80/20 base-building — the easy volume IS the work. If you can\'t talk, slow down. Log this from your watch below (distance, time, avg pace, avg + max HR).' }),
+      run('Long Run', 'long', { distance:w.longRun, pace:'EASY — HR under ~150 (~11:30–12:30/mi; slower than feels natural)',
+        notes:w.longNote+' Wk-1 ran way too hot (HR 160, max 183, walked twice) — your aerobic base is THE limiter, so this MUST be genuinely easy. Keep HR under ~150; if it creeps up, WALK until it drops then jog again — walk breaks are correct here, not failure. 80/20 base-building — the easy volume IS the work. If you can\'t talk, slow down. Log this from your watch below (distance, time, avg pace, avg + max HR).' }),
       run('Strides (optional)', 'sprint', { reps:4, distance:'100m', pace:'relaxed fast', rest:'full walk-back', notes:'After the run, for form. Skip if tired.' }),
     ], 'Record on the Garmin and log the watch data here.'),
   ]);
@@ -285,7 +288,7 @@ const PROGRAM = {
       focus:'Establish loads + groove the patterns. Everything submaximal — leave reps in the tank.',
       clean:'135 lb', jumpDB:'15 lb DBs', pogo:'10 lb DBs',
       squat:'185 lb', rdl:'185 lb', bulg:'25 lb DBs', step:'25 lb DBs', calf:'25 lb DB',
-      bench:'185 lb', pushPress:'135 lb', ohp:'115 lb', pullup:'+35 lb',
+      bench:'175 lb', pushPress:'135 lb', ohp:'115 lb', pullup:'+35 lb',
       longRun:'3 mi', longNote:'Built off your current 2mi.',
       accel:6, maxV:4, swimMainReps:8, swimTotal:'~400m',
     }),
@@ -294,7 +297,7 @@ const PROGRAM = {
       focus:'Add a little load/volume. Same patterns, slightly heavier or one more rep.',
       clean:'145 lb', jumpDB:'15 lb DBs', pogo:'10 lb DBs',
       squat:'195 lb', rdl:'195 lb', bulg:'30→35 lb DBs', step:'35 lb DBs', calf:'30→35 lb DB',
-      bench:'190 lb', pushPress:'140 lb', ohp:'120 lb', pullup:'+40 lb',
+      bench:'180 lb', pushPress:'140 lb', ohp:'120 lb', pullup:'+40 lb',
       longRun:'3.5 mi', longNote:'Small step up — never jump a single run >10% past your longest of the last month.',
       accel:7, maxV:4, swimMainReps:10, swimTotal:'~450m',
     }),
@@ -303,7 +306,7 @@ const PROGRAM = {
       focus:'Top of the block — highest intensity/volume. Push, but keep form crisp.',
       clean:'155 lb', jumpDB:'20 lb DBs', pogo:'15 lb DBs',
       squat:'205 lb', rdl:'205 lb', bulg:'35 lb DBs', step:'35 lb DBs', calf:'40 lb DB',
-      bench:'195 lb', pushPress:'145 lb', ohp:'125 lb', pullup:'+45 lb',
+      bench:'185 lb', pushPress:'145 lb', ohp:'125 lb', pullup:'+45 lb',
       longRun:'4 mi', longNote:'Longest run of the block.',
       accel:7, maxV:5, swimMainReps:6, swimTotal:'~500m (shift 4 reps to 50m)',
     }),
