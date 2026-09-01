@@ -22,8 +22,13 @@ Mon Push A    Tue Pull A    Wed Legs A    Thu Push B
 Fri Pull B    Sat Legs B    Sun Mobility + gate test
 ```
 
-Run every day, **run always goes first**, 20-minute filled gap, then lift. Leg days get the
-shortest run. Every day starts with the same `DAILY()` block: foot activation, run, gap work.
+**Running was removed from the app on 2026-09-01** at Pearce's request — he tracks it himself.
+The vault doc still owns the running rules (run first, 20-min filled gap, shortest on leg days,
+frozen at 1 mi/day until the gate clears). Nothing in the app enforces them any more.
+
+Every day now opens with `WARMUP(kind)` — kind is `push|pull|legs|mobility`. Two universal
+items (ankle + foot prep, knee-to-wall + balance) plus a joint-specific item and a ramp set.
+**The ankle/foot block is deliberately kept:** it's tib-post prehab, not run prep.
 
 Key rules baked into the notes: one heavy anchor per session (215 must go ≤6 reps to
 qualify); right leg leads every unilateral set; calf work last and reps govern; no loaded

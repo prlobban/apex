@@ -3,13 +3,16 @@
    ------------------------------------------------------------
    Edit this file to change the plan. app.js never needs touching.
 
-   DAY     = { id, name, title, sub, run, sections:[SECTION] }
+   DAY     = { id, name, title, sub, sections:[SECTION] }
    SECTION = { label, items:[ITEM] }
    ITEM    = { name, sets, target, load, rest, note, cols }
        sets   -> how many logging rows get rendered
        target -> rep / time target shown on the header line
        load   -> target load text ("205-215", "2x60", "")
        cols   -> [leftBoxLabel, rightBoxLabel]; default ['lb','reps']
+                 ['—','done'] renders a bare tick, no input boxes
+
+   Running is NOT in this app — Pearce runs on his own.
    ============================================================ */
 'use strict';
 
@@ -21,19 +24,33 @@ var X = function (name, sets, target, load, rest, note, cols) {
   };
 };
 
-// Pre-lift block — identical every day, only the run distance changes.
-var DAILY = function (runNote) {
-  return {
-    label: 'BEFORE YOU LIFT',
-    items: [
-      X('Foot activation', 1, '5 min', '', '',
-        'Short foot 2x15. Band inversion 3x20 @3s. Slow heel raise 2x20.', ['—', 'done']),
-      X('RUN', 1, runNote, '', '',
-        'Run FIRST, always. Flat, non-cambered surface. Cadence 170-180. Pain over 3/10 or altered gait during the run means the leg work is cut today.', ['mi', 'min']),
-      X('Gap work', 1, '20 min', '', '',
-        'Knee-to-wall 2x10. Balance 2x30s. Then warm up the lift.', ['—', 'done']),
-    ],
-  };
+/* Warm-up. Short by design. The ankle/foot block is tib-post prehab and
+   runs every day regardless of what the session is. kind: push|pull|legs|mobility */
+var WARMUP = function (kind) {
+  var items = [
+    X('Ankle + foot prep', 1, '4 min', '', '',
+      'Short foot 2x15. Band inversion 3x20 at 3s. Slow bilateral heel raise 2x20. This is the tib-post work. It does not get skipped.', ['—', 'done']),
+    X('Knee-to-wall + balance', 1, '2 min', '', '',
+      'Half-kneeling knee-to-wall 2x10/side. Single-leg balance 2x30s, eyes closed.', ['—', 'done']),
+  ];
+
+  if (kind === 'push') {
+    items.push(X('Shoulders', 1, '2 min', '', '',
+      'Band pull-apart 2x15. Shoulder CARs 5 each way. Scap push-up 2x10.', ['—', 'done']));
+  } else if (kind === 'pull') {
+    items.push(X('Shoulders + grip', 1, '2 min', '', '',
+      'Band pull-apart 2x15. Dead hang 2x20s. Scap pull-up 2x8.', ['—', 'done']));
+  } else if (kind === 'legs') {
+    items.push(X('Hips + legs', 1, '3 min', '', '',
+      'Leg swings 10 each way per leg. Hip CARs 5/side. Bodyweight squat 2x10. Glute bridge 2x10. Warm the Achilles thoroughly before anything loads it.', ['—', 'done']));
+  }
+
+  if (kind !== 'mobility') {
+    items.push(X('Ramp the first lift', 1, '3-4 sets', '', '',
+      'Empty bar, then climb to your working weight. Never start cold on the anchor.', ['—', 'done']));
+  }
+
+  return { label: 'WARM-UP', items: items };
 };
 
 var PROGRAM = {
@@ -43,9 +60,9 @@ var PROGRAM = {
 
     /* ---------------------------------------------------- MON */
     {
-      id: 'mon', name: 'Monday', title: 'PUSH A', sub: 'Heavy bench', run: 'normal',
+      id: 'mon', name: 'Monday', title: 'PUSH A', sub: 'Heavy bench',
       sections: [
-        DAILY('normal — 1 mi'),
+        WARMUP('push'),
         {
           label: 'LIFT',
           items: [
@@ -69,9 +86,9 @@ var PROGRAM = {
 
     /* ---------------------------------------------------- TUE */
     {
-      id: 'tue', name: 'Tuesday', title: 'PULL A', sub: 'Heavy vertical / hinge-free', run: 'normal',
+      id: 'tue', name: 'Tuesday', title: 'PULL A', sub: 'Heavy vertical / hinge-free',
       sections: [
-        DAILY('normal — 1 mi'),
+        WARMUP('pull'),
         {
           label: 'LIFT',
           items: [
@@ -101,9 +118,9 @@ var PROGRAM = {
 
     /* ---------------------------------------------------- WED */
     {
-      id: 'wed', name: 'Wednesday', title: 'LEGS A', sub: 'Heavy bilateral', run: 'SHORTEST',
+      id: 'wed', name: 'Wednesday', title: 'LEGS A', sub: 'Heavy bilateral',
       sections: [
-        DAILY('SHORTEST — 1 mi'),
+        WARMUP('legs'),
         {
           label: 'LIFT',
           items: [
@@ -127,9 +144,9 @@ var PROGRAM = {
 
     /* ---------------------------------------------------- THU */
     {
-      id: 'thu', name: 'Thursday', title: 'PUSH B', sub: 'Incline / volume', run: 'LONGEST',
+      id: 'thu', name: 'Thursday', title: 'PUSH B', sub: 'Incline / volume',
       sections: [
-        DAILY('LONGEST — 1 mi'),
+        WARMUP('push'),
         {
           label: 'LIFT',
           items: [
@@ -153,9 +170,9 @@ var PROGRAM = {
 
     /* ---------------------------------------------------- FRI */
     {
-      id: 'fri', name: 'Friday', title: 'PULL B', sub: 'Volume', run: 'normal',
+      id: 'fri', name: 'Friday', title: 'PULL B', sub: 'Volume',
       sections: [
-        DAILY('normal — 1 mi'),
+        WARMUP('pull'),
         {
           label: 'LIFT',
           items: [
@@ -179,9 +196,9 @@ var PROGRAM = {
 
     /* ---------------------------------------------------- SAT */
     {
-      id: 'sat', name: 'Saturday', title: 'LEGS B', sub: 'Unilateral / posterior, RPE 7', run: 'SHORTEST',
+      id: 'sat', name: 'Saturday', title: 'LEGS B', sub: 'Unilateral / posterior, RPE 7',
       sections: [
-        DAILY('SHORTEST — 1 mi'),
+        WARMUP('legs'),
         {
           label: 'LIFT',
           items: [
@@ -200,9 +217,9 @@ var PROGRAM = {
 
     /* ---------------------------------------------------- SUN */
     {
-      id: 'sun', name: 'Sunday', title: 'MOBILITY', sub: 'plus the weekly gate test', run: 'LONGEST',
+      id: 'sun', name: 'Sunday', title: 'MOBILITY', sub: 'plus the weekly gate test',
       sections: [
-        DAILY('LONGEST — 1 mi'),
+        WARMUP('mobility'),
         {
           label: 'MOBILITY — 32 min',
           items: [

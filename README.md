@@ -6,9 +6,13 @@ Live: https://prlobban.github.io/apex/
 
 ## What it is
 
-One page per day of the week. Each page lists that day's exercises with a target
-(`sets x reps`, load, rest), a note where the cue matters, and a row per set with two
-boxes and a tick. **START DAY FRESH** wipes that day and stamps a new start time.
+One page per day of the week. Each page opens with a short warm-up, then lists that day's
+exercises with a target (`sets x reps`, load, rest), a note where the cue matters, and a row
+per set with two boxes and a tick. **START DAY FRESH** wipes that day and stamps a new start
+time.
+
+**Running is not in this app.** Pearce runs on his own. The ankle/foot prep stays in the
+warm-up regardless — that's tib-post prehab, not running.
 
 At the bottom of every day: **EXPORT JSON** (downloads) and **COPY JSON** (clipboard — the
 one that actually works in a standalone PWA on iOS). Both dump all seven days, not just the

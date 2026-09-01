@@ -87,14 +87,6 @@ main { padding: 0 1rem; max-width: 34rem; margin: 0 auto; }
 
 .daysub { margin: 0.35rem 0 0; font-size: 0.9375rem; color: var(--soft); }
 
-.dayrun {
-  margin: 0.5rem 0 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .startrow {
   display: flex;
   align-items: center;

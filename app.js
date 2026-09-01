@@ -176,7 +176,6 @@ function render() {
       el('span', { class: 'daylabel' }, day.name),
     ]),
     el('p', { class: 'daysub' }, day.sub),
-    el('p', { class: 'dayrun' }, 'Run: ' + day.run + '  ·  run before you lift'),
     el('div', { class: 'startrow' }, [
       el('button', {
         class: 'startbtn',
