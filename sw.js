@@ -1,11 +1,11 @@
 /* APEX service worker — offline-first cache.
-   Bump CACHE when you change app files so clients pull fresh. */
-const CACHE = 'apex-v2';
+   Bump CACHE whenever app files change so clients pull fresh. */
+const CACHE = 'apex-v3';
 const ASSETS = [
   './', './index.html', './styles.css',
-  './program.js', './timer.js', './app.js',
+  './program.js', './app.js',
   './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png',
+  './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
 ];
 
 self.addEventListener('install', e => {
@@ -25,7 +25,7 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     fetch(e.request).then(res => {
       const copy = res.clone();
-      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(()=>{});
+      caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
       return res;
     }).catch(() => caches.match(e.request).then(r => r || caches.match('./index.html')))
   );

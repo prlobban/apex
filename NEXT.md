@@ -1,39 +1,51 @@
-# APEX — pick up here (updated 2026-06-29)
+# APEX — pick up here (updated 2026-09-01)
 
-The real 4-week block is **seeded and live**. Pearce is running Week 1 and reports
-back **Mon 2026-07-06** with an export + how everything felt. Read this to resume.
+Rebuilt from scratch on 2026-09-01. The old 4-week hybrid block is gone; the app is now
+**seven day pages and nothing else**, running the September PPL program.
 
-## Where things stand
-- Project at `C:\Users\daysh\apex\` (git committed locally, no remote yet).
-- `program.js` now holds the **real research-backed 4-week block** (not the placeholder).
-  Built via a `makeWeek(params)` generator — weeks share one template, only loads/volumes
-  progress. Wk1–3 progressive, Wk4 deload + re-test.
-- `app.js` logging upgraded: **per-set weight/reps/note** for lifts, **watch-run log**
-  (distance/time/pace/avg+max HR/note) for runs, done+note for holds/plyos.
-- **Export** is now self-describing (resolves keys → week/day/exercise names) so the JSON
-  is readable standalone when Pearce hands it back. Profile → Export data.
-- Serve: `npx http-server -p 8137` (Python not installed). Smoke test: `node smoke-test.mjs`.
+## What changed
+- **Removed:** Today view, Program view, Timer, Progress, Profile, JSON export, `timer.js`,
+  Google Fonts, all colour. The old `makeWeek()` / 4-week generator is gone with them.
+- **Now:** `index.html` is a day nav + `<main>`. `app.js` renders one day at a time.
+- **Look:** black & white only, `system-ui` default font. White paper, black ink, hairline
+  rules. Icon is a white barbell on a black tile (`tools/generate-icons.mjs`).
+- **Logging:** per set — two boxes + a tick. `localStorage`, key `apex.v2.<dayId>`.
+- **START DAY FRESH** button on every day: confirms, clears that day, stamps a start time.
+- `sw.js` cache bumped to `apex-v3`.
 
-## The plan (confirmed + seeded)
-6 days, fixed-but-moveable, 4 pillars (run priority / strength / physique / mobility),
-research-backed throughout (frequency 2x/wk, full force-velocity curve for power, 80/20
-polarized running, de Salles/Schoenfeld rest intervals, HSR Achilles + band leg curls,
-head-to-toe prehab baked into every day):
-- D1 Lower (power+strength), D2 Upper (power+strength), D3 Swim+mobility,
-  D4 Sprint speed (1 track day, sprint-focused), D5 Long Zone-2 run (continuous ramp),
-  D6 KB/circuit+flexibility, D7 Rest.
-- Exact loads seeded off his real numbers (squat 235×5/~290, bench 215×5, OHP 135–145,
-  pull-ups 18–23, PC ~220 1.5y ago, 5k ~9:30, gasses after 50m swim). Bar caps 215.
+## The program it runs
+The September PPL block, agreed 2026-09-01. Source of truth is the vault doc
+`90-agent-output/ppl-program-2026-09.md` (promote target: `20-fitness/`).
+
+```
+Mon Push A    Tue Pull A    Wed Legs A    Thu Push B
+Fri Pull B    Sat Legs B    Sun Mobility + gate test
+```
+
+Run every day, **run always goes first**, 20-minute filled gap, then lift. Leg days get the
+shortest run. Every day starts with the same `DAILY()` block: foot activation, run, gap work.
+
+Key rules baked into the notes: one heavy anchor per session (215 must go ≤6 reps to
+qualify); right leg leads every unilateral set; calf work last and reps govern; no loaded
+ab work; heavy hinge exactly once a week (Wed).
 
 ## Open items
-1. **Week-1 report (Mon 2026-07-06):** review his export, adjust loads, build the NEXT block.
-   Todoist task set (Fitness project).
-2. **Data storage** — still localStorage only, by his call ("don't want to wire up Supabase
-   for now"). Export = the handoff mechanism. Revisit if he wants history/sync later.
-3. **Garmin MCP** — still PARKED. Watch data is hand-entered into the run log for now.
+1. **Not pushed yet** — built on branch `ppl-rebuild`. Merge to `main` to deploy to Pages.
+2. **No export.** The old JSON handoff to Astra is gone by request ("just the 7 days").
+   If Pearce wants Astra reviewing his logs again, that needs rebuilding — it's the only
+   real capability the rebuild dropped.
+3. **Loads are estimates.** Bench 235 / squat 300 / DL 315 are from memory and untested.
+   The percentages in the notes (91% / 84% / 88%) rest on them. First 6 weeks should
+   establish real numbers via 215 AMRAP tests.
+4. **Gate test lives on Sunday** in-app and is the thing that unlocks mileage. If he isn't
+   filling it in, the running ramp has no brake.
 
-## Known baselines (don't re-ask) — see program.js `athlete` block
-6'0", 175lb. Home gym: barbell+plates 215 total, squat rack, pull-up bar, DBs 5–60 (NO 30),
-one 40lb KB, adjustable bench (incl. decline), bands L/M/H, agility ladder, 14lb med ball
-(no wall throws), jump rope, ab wheel, foam roller+lacrosse, massage gun, 18" ice-chest box,
-25m pool. Achilles ~99% — warm up. Goal sub-23 5k + jump high + strong/aesthetic.
+## Baselines (don't re-ask)
+6'0", 175 lb, lean, recomp at ~175. Home gym: barbell + plates **215 lb total max**, squat
+rack, pull-up bar (**too low to hang leg raises**), adjustable bench incl. decline, DBs
+5-60 (no 30s), one 40 lb KB, bands L/M/H, ab wheel, 14 lb med ball (ground slams only),
+18" box, foam roller, massage gun. **No pool, no bike** — excluded by request.
+
+Injuries: right Achilles fully torn ~mid-2025, ~99%, needs thorough warm-up. **Right medial
+foot tendon currently symptomatic** (likely tib post) — 2 weeks off running, back at 1 mi/day
+and frozen there until the heel-raise symmetry gate clears. Back tweak 2026-08-03, resolved.

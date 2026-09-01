@@ -1,39 +1,59 @@
 # APEX
 
-Pearce's personal training plan — a self-hosted, offline-capable PWA. Rebuild of the
-original single-file `apex`, restructured so the **plan is data, not code**.
+Pearce's training app. A PWA with seven pages — Monday to Sunday — and nothing else.
+
+Live: https://prlobban.github.io/apex/
+
+## What it is
+
+One page per day of the week. Each page lists that day's exercises with a target
+(`sets x reps`, load, rest), a note where the cue matters, and a row per set with two
+boxes and a tick. **START DAY FRESH** wipes that day and stamps a new start time.
+
+That's the whole app. No timer, no today view, no profile, no charts.
 
 ## Files
 
-| File                   | What it is                                                        |
-|------------------------|------------------------------------------------------------------|
-| `index.html`           | App shell: bottom nav + mount point. Loads the scripts.          |
-| `styles.css`           | Design system (dark/sharp/mono). All visual tokens live here.    |
-| `program.js`           | **THE PLAN.** Data only. This is the file you edit most.         |
-| `app.js`               | App core: router, render, persistence, logging. Plan-agnostic.   |
-| `timer.js`             | Interval + rest timer (Web Audio beeps).                         |
-| `sw.js`                | Service worker — offline cache.                                  |
-| `manifest.webmanifest` | PWA install metadata.                                            |
+| File | What it holds |
+|---|---|
+| `program.js` | **The plan.** Data only — this is the file you edit. |
+| `app.js` | Router, render, localStorage logging. Knows nothing about plan content. |
+| `styles.css` | Black & white, system font. |
+| `index.html` | Shell: day nav + `<main>`. |
+| `sw.js` | Offline cache. **Bump `CACHE` when app files change.** |
+| `tools/generate-icons.mjs` | Regenerates the icons (black tile, white barbell). |
 
-## Why this shape
-- **Edit the plan without touching app logic.** Add weeks/days/items in `program.js`;
-  `app.js` renders whatever's there.
-- **Running is first-class.** Items have a `kind` (`lift`, `run`, `hold`, `plyo`, `note`).
-  Run items support intervals/tempo/easy/long/sprint — paces and splits, not just sets/reps.
-- **Offline + installable.** Service worker caches everything; add to home screen.
+## Editing the plan
 
-## Run it
-Needs to be served over http (service worker + modules). From this folder:
+Everything lives in `program.js`. A day looks like:
+
+```js
+{
+  id: 'mon', name: 'Monday', title: 'PUSH A', sub: 'Heavy bench', run: 'normal',
+  sections: [
+    DAILY('normal — 1 mi'),
+    { label: 'LIFT', items: [
+      X('Barbell bench', 5, '3-5', '205-215', '3:00', 'THE ANCHOR. 215 = 91% of your max.'),
+    ]},
+  ],
+}
 ```
-python -m http.server 8080
+
+`X(name, sets, target, load, rest, note, cols)` — `sets` decides how many logging rows
+render. `cols` sets the two box labels and defaults to `['lb','reps']`; pass
+`['—','done']` for a done-toggle row or `['mi','min']` for the run.
+
+After editing app files, bump `CACHE` in `sw.js` so installed clients pull the new version.
+
+## Dev
+
 ```
-Then open http://localhost:8080 . On your phone: open the URL, Share → Add to Home Screen.
+npx http-server -p 8137     # serve
+node smoke-test.mjs         # render + persistence check
+node tools/generate-icons.mjs
+```
 
-## Data model (see top of `program.js` for the full spec)
-`PROGRAM → weeks[] → days[] → sections[] → items[]`. Each item's `kind` decides what
-gets logged. Logs persist to `localStorage` per week+day.
+## Storage
 
-## Status
-Framework only. `program.js` holds a placeholder week — the real plan gets designed next.
-Icons in `icons/` are not generated yet (PWA still installs; add `icon-192.png` /
-`icon-512.png` when ready).
+`localStorage` only, keyed `apex.v2.<dayId>`. Per-device, no sync, no export. Clearing
+site data wipes the logs.
