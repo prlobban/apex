@@ -72,6 +72,94 @@ function fmtStarted(iso) {
   return 'started ' + mm + '/' + dd + ' ' + h + ':' + m + ap;
 }
 
+// rows that are just "did you do it" — no numbers worth typing
+function isTickOnly(item) {
+  return item.cols[0] === '—' && (item.cols[1] === 'done' || item.cols[1] === 'ok');
+}
+
+function rxLine(item) {
+  var rx = [];
+  rx.push(item.sets > 1 ? item.sets + ' x ' + item.target : item.target);
+  if (item.load) rx.push(item.load);
+  if (item.rest) rx.push('rest ' + item.rest);
+  return rx.join('  ·  ');
+}
+
+/* ---------- export ---------- */
+function buildExport() {
+  var out = {
+    app: 'APEX',
+    version: PROGRAM.version,
+    exported: new Date().toISOString(),
+    days: [],
+  };
+
+  PROGRAM.days.forEach(function (day) {
+    var log = getLog(day.id);
+    var dayOut = { day: day.name, title: day.title, started: log.started || null, sections: [] };
+
+    day.sections.forEach(function (sec, si) {
+      var secOut = { label: sec.label, exercises: [] };
+
+      sec.items.forEach(function (item, ii) {
+        var sets = [];
+        for (var s = 0; s < item.sets; s++) {
+          var rec = log.sets[si + '.' + ii + '.' + s];
+          if (!rec) continue;
+          if (!rec.a && !rec.b && !rec.done) continue;
+          var row = { set: s + 1 };
+          if (item.cols[0] !== '—' && rec.a) row[item.cols[0]] = rec.a;
+          if (!isTickOnly(item) && rec.b) row[item.cols[1]] = rec.b;
+          if (rec.done) row.checked = true;
+          sets.push(row);
+        }
+        if (sets.length) {
+          secOut.exercises.push({ name: item.name, prescribed: rxLine(item), sets: sets });
+        }
+      });
+
+      if (secOut.exercises.length) dayOut.sections.push(secOut);
+    });
+
+    if (dayOut.sections.length || dayOut.started) out.days.push(dayOut);
+  });
+
+  return JSON.stringify(out, null, 2);
+}
+
+function flash(btn, msg) {
+  var old = btn.textContent;
+  btn.textContent = msg;
+  setTimeout(function () { btn.textContent = old; }, 1600);
+}
+
+function downloadJSON(btn) {
+  try {
+    var blob = new Blob([buildExport()], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = el('a', { href: url, download: 'apex-export-' + new Date().toISOString().slice(0, 10) + '.json' });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  } catch (e) { flash(btn, 'FAILED — USE COPY'); }
+}
+
+function copyJSON(btn) {
+  var text = buildExport();
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(function () { flash(btn, 'COPIED'); })
+      .catch(function () { flash(btn, 'FAILED'); });
+    return;
+  }
+  try {
+    var ta = el('textarea', { class: 'offscreen' });
+    ta.value = text;
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+    flash(btn, 'COPIED');
+  } catch (e) { flash(btn, 'FAILED'); }
+}
+
 /* ---------- render ---------- */
 var currentDay = todayId();
 
@@ -109,23 +197,27 @@ function render() {
     main.appendChild(el('h2', { class: 'seclabel' }, sec.label));
 
     sec.items.forEach(function (item, ii) {
-      var rx = [];
-      if (item.sets > 1) rx.push(item.sets + ' x ' + item.target);
-      else rx.push(item.target);
-      if (item.load) rx.push(item.load);
-      if (item.rest) rx.push('rest ' + item.rest);
-
       var rows = [];
       for (var s = 0; s < item.sets; s++) rows.push(setRow(day.id, si, ii, s, item));
 
       main.appendChild(el('section', { class: 'ex' }, [
         el('div', { class: 'exname' }, item.name),
-        el('div', { class: 'exrx' }, rx.join('  ·  ')),
+        el('div', { class: 'exrx' }, rxLine(item)),
         item.note ? el('div', { class: 'exnote' }, item.note) : null,
         el('div', { class: 'sets' }, rows),
       ]));
     });
   });
+
+  /* export — all seven days, not just this one */
+  main.appendChild(el('footer', { class: 'foot' }, [
+    el('button', {
+      class: 'linkbtn', onclick: function (e) { downloadJSON(e.target); },
+    }, 'EXPORT JSON'),
+    el('button', {
+      class: 'linkbtn', onclick: function (e) { copyJSON(e.target); },
+    }, 'COPY JSON'),
+  ]));
 
   /* nav state */
   var btns = document.querySelectorAll('.daybtn');
@@ -170,6 +262,14 @@ function setRow(dayId, si, ii, s, item) {
     },
   }, rec.done ? '✓' : '');
 
+  if (isTickOnly(item)) {
+    return el('div', { class: 'setrow' }, [
+      el('span', { class: 'setno' }, item.sets > 1 ? String(s + 1) : '·'),
+      el('span', { class: 'tickpad' }, ''),
+      check,
+    ]);
+  }
+
   var muted = item.cols[0] === '—';
 
   return el('div', { class: 'setrow' }, [
@@ -190,6 +290,9 @@ function boot() {
     }, d.name.slice(0, 3).toUpperCase()));
   });
   render();
+
+  // small handle for the smoke test / console poking
+  window.APEX = { buildExport: buildExport, render: render };
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function () {});
 }

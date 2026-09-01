@@ -30,14 +30,13 @@ qualify); right leg leads every unilateral set; calf work last and reps govern; 
 ab work; heavy hinge exactly once a week (Wed).
 
 ## Open items
-1. **Not pushed yet** — built on branch `ppl-rebuild`. Merge to `main` to deploy to Pages.
-2. **No export.** The old JSON handoff to Astra is gone by request ("just the 7 days").
-   If Pearce wants Astra reviewing his logs again, that needs rebuilding — it's the only
-   real capability the rebuild dropped.
-3. **Loads are estimates.** Bench 235 / squat 300 / DL 315 are from memory and untested.
+1. **Export is back** (kept by request, 2026-09-01) — `EXPORT JSON` / `COPY JSON` at the foot
+   of every day, covering all seven days, self-describing. COPY is the one that works in a
+   standalone PWA on iOS. This is the handoff for Astra to review loads against real data.
+2. **Loads are estimates.** Bench 235 / squat 300 / DL 315 are from memory and untested.
    The percentages in the notes (91% / 84% / 88%) rest on them. First 6 weeks should
    establish real numbers via 215 AMRAP tests.
-4. **Gate test lives on Sunday** in-app and is the thing that unlocks mileage. If he isn't
+3. **Gate test lives on Sunday** in-app and is the thing that unlocks mileage. If he isn't
    filling it in, the running ramp has no brake.
 
 ## Baselines (don't re-ask)

@@ -1,6 +1,6 @@
 /* APEX service worker — offline-first cache.
    Bump CACHE whenever app files change so clients pull fresh. */
-const CACHE = 'apex-v3';
+const CACHE = 'apex-v4';
 const ASSETS = [
   './', './index.html', './styles.css',
   './program.js', './app.js',

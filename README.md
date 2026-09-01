@@ -10,6 +10,11 @@ One page per day of the week. Each page lists that day's exercises with a target
 (`sets x reps`, load, rest), a note where the cue matters, and a row per set with two
 boxes and a tick. **START DAY FRESH** wipes that day and stamps a new start time.
 
+At the bottom of every day: **EXPORT JSON** (downloads) and **COPY JSON** (clipboard — the
+one that actually works in a standalone PWA on iOS). Both dump all seven days, not just the
+one on screen, and the output is self-describing: day, section, exercise, prescribed line,
+then the logged sets. That's the handoff back to Astra.
+
 That's the whole app. No timer, no today view, no profile, no charts.
 
 ## Files
@@ -55,5 +60,5 @@ node tools/generate-icons.mjs
 
 ## Storage
 
-`localStorage` only, keyed `apex.v2.<dayId>`. Per-device, no sync, no export. Clearing
-site data wipes the logs.
+`localStorage` only, keyed `apex.v2.<dayId>`. Per-device, no sync. Clearing site data wipes
+the logs — export first if you care about them.

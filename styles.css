@@ -178,6 +178,8 @@ main { padding: 0 1rem; max-width: 34rem; margin: 0 auto; }
 
 .boxpad { flex: 1 1 0; }
 
+.tickpad { flex: 1 1 0; }
+
 .box {
   flex: 1 1 auto;
   width: 100%;
@@ -217,3 +219,26 @@ main { padding: 0 1rem; max-width: 34rem; margin: 0 auto; }
   cursor: pointer;
 }
 .check.on { background: var(--ink); color: var(--paper); }
+
+/* ---------- export footer ---------- */
+.foot {
+  display: flex;
+  gap: 1.25rem;
+  padding: 1.75rem 0 1rem;
+}
+
+.linkbtn {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  padding: 0 0 0.15rem;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.offscreen { position: absolute; left: -9999px; opacity: 0; }

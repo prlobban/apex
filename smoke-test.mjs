@@ -57,4 +57,17 @@ if (q('.check').classList.contains('on')) throw new Error('start fresh did not c
 if (!q('.started').textContent.startsWith('started')) throw new Error('start fresh did not stamp a time');
 console.log('reset    ->', q('.started').textContent);
 
+// 6. export produces self-describing JSON covering all seven days
+q('.daybtn[data-day="sat"]').click();
+const sbox = qa(".ex").find(e => e.querySelector(".exname").textContent.startsWith("Rear-foot")).querySelector(".box");
+sbox.value = '55';
+sbox.dispatchEvent(new window.Event('input', { bubbles: true }));
+const json = JSON.parse(window.APEX.buildExport());
+if (json.app !== 'APEX') throw new Error('export missing app name');
+const sat = json.days.find(d => d.day === 'Saturday');
+if (!sat) throw new Error('export dropped Saturday');
+const ex = sat.sections[0].exercises[0];
+if (!ex.prescribed || !ex.sets.length) throw new Error('export entry not self-describing');
+console.log('export   ->', json.days.length, 'days,', sat.day, '/', ex.name, '/', JSON.stringify(ex.sets[0]));
+
 console.log('OK — no render errors');
