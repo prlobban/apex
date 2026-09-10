@@ -31,7 +31,7 @@ body {
   top: 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(8, 1fr);
   background: var(--paper);
   border-bottom: 2px solid var(--rule);
   padding-top: env(safe-area-inset-top);
@@ -54,6 +54,42 @@ body {
 .daybtn.on {
   background: var(--ink);
   color: var(--paper);
+}
+/* rest days read lighter; today gets a rule under it */
+.daybtn.isrest { font-weight: 400; }
+.daybtn.istoday { box-shadow: inset 0 -4px 0 var(--ink); }
+.daybtn.istoday.on { box-shadow: inset 0 -4px 0 var(--paper); }
+
+/* ---------- cycle position ---------- */
+.cyclerow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.cyclenote {
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--soft);
+}
+
+.synclink {
+  appearance: none;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--soft);
+  padding: 0;
+  font: inherit;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--soft);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 /* ---------- day header ---------- */

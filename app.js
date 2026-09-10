@@ -1,7 +1,12 @@
 /* ============================================================
    APEX — app core
-   Seven day pages. Nothing else. Reads the plan from
+   An 8-day rotating cycle, not a week. Reads the plan from
    window.PROGRAM (program.js) and knows nothing about content.
+
+   "Today" is derived from an anchor date in storage — the date
+   that was Day 1 — so the cycle drifts through the calendar the
+   way the program does. Miss a day, hit RESYNC on the day you
+   are actually on and the anchor moves.
    ============================================================ */
 'use strict';
 
@@ -29,9 +34,49 @@ var Store = (function () {
   };
 })();
 
-var KEY = function (dayId) { return 'apex.v2.' + dayId; };
+var KEY = function (dayId) { return 'apex.v3.' + dayId; };
 var getLog = function (dayId) { return Store.get(KEY(dayId), { started: null, sets: {} }); };
 var setLog = function (dayId, v) { Store.set(KEY(dayId), v); };
+
+/* ---------- the cycle ----------
+   ANCHOR_KEY holds the local date (YYYY-MM-DD) that was Day 1.
+   Everything else is arithmetic off that. */
+var ANCHOR_KEY = 'apex.v3.anchor';
+var CYCLE = function () { return PROGRAM.days.length; };
+
+function ymd(d) {
+  var m = String(d.getMonth() + 1), day = String(d.getDate());
+  if (m.length < 2) m = '0' + m;
+  if (day.length < 2) day = '0' + day;
+  return d.getFullYear() + '-' + m + '-' + day;
+}
+function midnight(dateStr) {
+  var p = String(dateStr).split('-');
+  return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+}
+function getAnchor() {
+  var a = Store.get(ANCHOR_KEY, null);
+  if (!a || isNaN(midnight(a))) { a = ymd(new Date()); Store.set(ANCHOR_KEY, a); }
+  return a;
+}
+/* 1-based position in the cycle for today */
+function cycleIndexToday() {
+  var now = new Date();
+  var days = Math.round((midnight(ymd(now)) - midnight(getAnchor())) / 86400000);
+  var n = CYCLE();
+  return ((days % n) + n) % n;   // 0-based
+}
+function todayId() { return PROGRAM.days[cycleIndexToday()].id; }
+/* make today be day at index i — moves the anchor back i days */
+function resyncTo(i) {
+  var d = new Date();
+  d.setDate(d.getDate() - i);
+  Store.set(ANCHOR_KEY, ymd(d));
+}
+function indexOfId(id) {
+  for (var i = 0; i < PROGRAM.days.length; i++) if (PROGRAM.days[i].id === id) return i;
+  return 0;
+}
 
 /* ---------- dom helper ---------- */
 function el(tag, attrs, children) {
@@ -54,8 +99,6 @@ function el(tag, attrs, children) {
 }
 
 /* ---------- day helpers ---------- */
-var DAY_IDS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-function todayId() { return DAY_IDS[(new Date().getDay() + 6) % 7]; }
 function dayById(id) {
   for (var i = 0; i < PROGRAM.days.length; i++) if (PROGRAM.days[i].id === id) return PROGRAM.days[i];
   return PROGRAM.days[0];
@@ -91,6 +134,8 @@ function buildExport() {
     app: 'APEX',
     version: PROGRAM.version,
     exported: new Date().toISOString(),
+    cycleLength: PROGRAM.days.length,
+    cycleAnchor: getAnchor(),
     days: [],
   };
 
@@ -170,12 +215,28 @@ function render() {
   main.innerHTML = '';
 
   /* header */
+  var idx = indexOfId(day.id);
+  var isToday = idx === cycleIndexToday();
+  var todayDay = PROGRAM.days[cycleIndexToday()];
+
   main.appendChild(el('header', { class: 'dayhead' }, [
     el('div', { class: 'dayhead-top' }, [
       el('h1', {}, day.title),
-      el('span', { class: 'daylabel' }, day.name),
+      el('span', { class: 'daylabel' }, day.name + ' of ' + CYCLE()),
     ]),
     el('p', { class: 'daysub' }, day.sub),
+    el('div', { class: 'cyclerow' }, [
+      el('span', { class: 'cyclenote' },
+        isToday ? 'TODAY' : 'today is ' + todayDay.name.toLowerCase() + ' — ' + todayDay.title),
+      el('button', {
+        class: 'synclink',
+        onclick: function () {
+          if (!window.confirm('Make TODAY ' + day.name + ' (' + day.title + ')?\n\nThis re-anchors the whole cycle to today. Use it when you have missed a day or shuffled one.')) return;
+          resyncTo(idx);
+          render();
+        },
+      }, isToday ? 'RE-ANCHOR' : 'MAKE TODAY'),
+    ]),
     el('div', { class: 'startrow' }, [
       el('button', {
         class: 'startbtn',
@@ -208,7 +269,7 @@ function render() {
     });
   });
 
-  /* export — all seven days, not just this one */
+  /* export — the whole cycle, not just this day */
   main.appendChild(el('footer', { class: 'foot' }, [
     el('button', {
       class: 'linkbtn', onclick: function (e) { downloadJSON(e.target); },
@@ -220,8 +281,11 @@ function render() {
 
   /* nav state */
   var btns = document.querySelectorAll('.daybtn');
+  var tid = todayId();
   for (var i = 0; i < btns.length; i++) {
-    btns[i].classList.toggle('on', btns[i].getAttribute('data-day') === currentDay);
+    var d = btns[i].getAttribute('data-day');
+    btns[i].classList.toggle('on', d === currentDay);
+    btns[i].classList.toggle('istoday', d === tid);
   }
   window.scrollTo(0, 0);
 }
@@ -284,14 +348,18 @@ function boot() {
   var nav = document.getElementById('daynav');
   PROGRAM.days.forEach(function (d) {
     nav.appendChild(el('button', {
-      class: 'daybtn', 'data-day': d.id,
+      class: 'daybtn' + (d.rest ? ' isrest' : ''), 'data-day': d.id,
       onclick: function () { currentDay = d.id; render(); },
-    }, d.name.slice(0, 3).toUpperCase()));
+    }, d.short || d.name.slice(0, 3).toUpperCase()));
   });
   render();
 
   // small handle for the smoke test / console poking
-  window.APEX = { buildExport: buildExport, render: render };
+  window.APEX = {
+    buildExport: buildExport, render: render,
+    todayId: todayId, cycleIndexToday: cycleIndexToday,
+    getAnchor: getAnchor, resyncTo: resyncTo,
+  };
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function () {});
 }
