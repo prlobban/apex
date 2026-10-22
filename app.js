@@ -213,7 +213,8 @@ function render() {
 
 function topbar() {
   return el('div', { class: 'topbar' }, [
-    el('div', { class: 'brand' }, [el('img', { src: 'icons/icon-192.png', alt: '' }), el('span', { text: 'APEX' })]),
+    el('div', { class: 'brand' }, [el('img', { src: 'icons/icon-192.png', alt: '' }),
+      el('span', {}, ['APEX', el('span', { class: 'blockname', text: ' · ' + P.name })])]),
     el('div', { class: 'stepper' }, [
       el('button', { class: 'step', 'aria-label': 'previous day', onclick: function () { viewDate = E.addDays(viewDate, -1); render(); } }, '‹'),
       el('button', { class: 'datebtn', onclick: function () { viewDate = today; render(); } }, viewDate === today ? fmtDate(viewDate) : fmtDate(viewDate) + ' ↺'),

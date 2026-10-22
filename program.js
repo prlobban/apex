@@ -1,7 +1,7 @@
 /* ============================================================
    APEX — THE PROGRAM (data only, no app logic)
    ------------------------------------------------------------
-   APEX Hybrid, 8-week block. The words live in the vault doc
+   APEX: RECOIL, the 8-week block. The words live in the vault doc
    (apex-hybrid-block-2026-10.md). This file is that doc as data.
 
    The block is 56 days = 14 four-day cycles:
@@ -43,7 +43,7 @@ function bands(names, sets, lo, hi, inc, extra) {
 
 var PROGRAM = {
   version: 'hybrid-2026-10',
-  name: 'APEX Hybrid',
+  name: 'RECOIL',
   blockDays: 56,
   order: ['pull', 'push', 'legs', 'recovery'],
   deloadCycles: [7, 14],

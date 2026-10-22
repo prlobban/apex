@@ -1,7 +1,7 @@
 /* APEX service worker — the app shell works offline.
    The API is never cached: sets wait in the phone's outbox instead.
    Bump CACHE whenever app files change so phones pull fresh. */
-const CACHE = 'apex-v8';
+const CACHE = 'apex-v9';
 const ASSETS = [
   './', './index.html', './styles.css', './program.js', './engine.js', './app.js',
   './manifest.webmanifest',

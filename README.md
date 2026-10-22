@@ -1,6 +1,6 @@
 # APEX
 
-Pearce's training app for the **APEX Hybrid** 8-week block: Pull, Push, Legs, Recovery, repeated 14 times.
+Pearce's training app for **APEX: RECOIL**, the 8-week block: Pull, Push, Legs, Recovery, repeated 14 times.
 
 Live (tailnet only): **https://ronin.tail91327e.ts.net**. Install on iPhone: open it in Safari with Tailscale on, then Share → Add to Home Screen.
 
