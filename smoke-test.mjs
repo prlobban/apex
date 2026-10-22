@@ -1,105 +1,136 @@
-/* APEX smoke test — renders every cycle day, logs a set, checks persistence,
-   the START DAY FRESH reset, and the cycle anchor. Run: node smoke-test.mjs */
+/* APEX smoke test.
+   1. engine: block maths and the "add reps each cycle" rule
+   2. app: every session renders, a logged set lands in the outbox
+   3. server: sync round-trip through SQLite
+   Run: node smoke-test.mjs */
 import { JSDOM } from 'jsdom';
 import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { spawn } from 'child_process';
+import { createRequire } from 'module';
 
+const require = createRequire(import.meta.url);
+const { PROGRAM: P } = require('./program.js');
+const E = require('./engine.js');
+const ok = (c, msg) => { if (!c) throw new Error('FAIL: ' + msg); console.log('ok  ', msg); };
+
+/* ---------- 1. engine ---------- */
+const pos1 = E.position(P, '2026-10-23', '2026-10-23');
+ok(pos1.day === 1 && pos1.session === 'pull' && pos1.cycle === 1 && pos1.week === 1, 'day 1 is Pull, cycle 1, week 1');
+ok(E.position(P, '2026-10-23', '2026-10-26').session === 'recovery', 'day 4 is Recovery');
+ok(E.position(P, '2026-10-23', '2026-10-27').cycle === 2, 'day 5 starts cycle 2');
+const d25 = E.position(P, '2026-10-23', E.addDays('2026-10-23', 24));
+ok(d25.cycle === 7 && d25.deload, 'day 25 is cycle 7, an easy week');
+ok(E.position(P, '2026-10-23', E.addDays('2026-10-23', 56)).after, 'day 57 is after the block');
+
+const ex = id => Object.values(P.sessions).flatMap(s => s.exercises).find(e => e.id === id);
+const sess = (stage, wi, target, reps, weight, extra = {}) => ({
+  date: '2026-10-23', deload: false, stage, wi, target, setsPrescribed: reps.length,
+  sets: reps.map(r => ({ reps: r, weight, done: true })), ...extra,
+});
+
+let rx = E.prescribe(ex('pullup'), []);
+ok(rx.sets === 4 && rx.target === 12 && rx.label === 'Regular', 'pull-ups start 4 × 12');
+rx = E.prescribe(ex('pullup'), [sess(0, 0, 12, [12, 12, 12, 12])]);
+ok(rx.target === 13, 'all sets hit → +1 rep');
+rx = E.prescribe(ex('pullup'), [sess(0, 0, 13, [13, 13, 12, 11])]);
+ok(rx.target === 13 && rx.note === 'repeat', 'missed a set → repeat');
+rx = E.prescribe(ex('pullup'), [sess(0, 0, 15, [15, 15, 15, 15])]);
+ok(rx.label === 'Wide grip' && rx.target === 10, 'at 4 × 15 → wide grip at 10');
+
+rx = E.prescribe(ex('bench'), []);
+ok(rx.weight === 165 && rx.target === 8, 'bench starts 165 × 8');
+rx = E.prescribe(ex('bench'), [sess(0, 0, 12, [12, 12, 12, 12], 165)]);
+ok(rx.weight === 175 && rx.target === 8, 'bench at 4 × 12 → 175, back to 8');
+rx = E.prescribe(ex('bench'), [sess(0, 0, 8, [8, 8, 8, 8], 185)]);
+ok(rx.weight === 185 && rx.target === 9, 'typed weight (185) becomes the baseline');
+rx = E.prescribe(ex('bb_row'), []);
+ok(rx.weight === 145, 'row starts at 145 (155 is not loadable)');
+rx = E.prescribe(ex('front_squat'), [sess(0, 4, 10, [10, 10, 10, 10], 215)]);
+ok(rx.label.startsWith('215, 2s pause') && rx.target === 6, 'front squat at 215 × 10 → paused stage');
+rx = E.prescribe(ex('copenhagen'), [sess(0, 0, 20, [20, 20, 20])]);
+ok(rx.target === 25 && rx.unit === 'secs', 'Copenhagen +5s a cycle');
+rx = E.prescribe(ex('carry'), [sess(0, 0, 30, [30, 30], 55)]);
+ok(rx.weight === 60 && rx.target === 30, 'carry 55 → 60 lb');
+rx = E.prescribe(ex('carry'), [sess(0, 1, 30, [30, 30], 60)]);
+ok(rx.weight === 60 && rx.target === 40, 'carry at 60 → +10 m');
+rx = E.prescribe(ex('lateral'), [sess(0, 0, 20, [20, 20], 20)]);
+ok(rx.weight === 25 && rx.target === 12, 'laterals 20 → 25 lb');
+
+const below = sess(0, 0, 13, [10, 9, 9, 8]);
+rx = E.prescribe(ex('pullup'), [below, { ...below, date: '2026-10-19' }]);
+ok(rx.target === 12 && rx.note === 'step back', 'below 12 twice → step back');
+
+rx = E.prescribe(ex('bench'), [sess(0, 0, 9, [9, 9, 9, 9], 165)], { deload: true });
+ok(rx.sets === 2 && rx.target === 9 + 1 && rx.note === 'easy week', 'easy week halves sets');
+const withDeload = [{ ...sess(0, 0, 10, [10, 10], 165), deload: true }, sess(0, 0, 9, [9, 9, 9, 9], 165)];
+rx = E.prescribe(ex('bench'), withDeload);
+ok(rx.target === 10 && rx.sets === 4, 'easy-week sessions are ignored for progression');
+rx = E.prescribe(ex('front_squat'), [sess(0, 0, 6, [6, 6, 6, 6], 165)], { hold: true });
+ok(rx.target === 6 && rx.note === 'hold', 'foot hold freezes leg rep adds');
+
+const fs3 = E.footStatus({ '2026-10-24': { foot: 3 }, '2026-10-25': { foot: 3 } }, '2026-10-25');
+ok(fs3.red, '3+ two mornings running → red day');
+ok(E.footStatus({ '2026-10-22': { foot: 4 } }, '2026-10-25').hold, 'a 4 this week → hold');
+const T = (k, v) => ({ key: k, value: v });
+ok(E.heelGate({ a: T('heel_r_straight', 18), b: T('heel_l_straight', 20), c: T('heel_r_bent', 19), d: T('heel_l_bent', 20) }) === true, 'heel gate passes at 90%');
+ok(E.heelGate({ a: T('heel_r_straight', 17), b: T('heel_l_straight', 20), c: T('heel_r_bent', 19), d: T('heel_l_bent', 20) }) === false, 'heel gate fails at 85%');
+const w5 = E.position(P, '2026-10-23', E.addDays('2026-10-23', 30));
+ok(E.jumpsFor(P, w5, null).length === 3 && E.jumpsFor(P, w5, true).length === 5, 'week 5 single-leg jumps only after the gate');
+ok(E.jumpsFor(P, pos1, null)[0].sets === 2, 'cycle 1 pogos are 2 sets');
+
+/* ---------- 2. app in a fake browser ---------- */
 const html = fs.readFileSync('index.html', 'utf8');
 const dom = new JSDOM(html, { runScripts: 'outside-only', pretendToBeVisual: true, url: 'http://localhost/' });
 const { window } = dom;
-global.window = window; global.document = window.document;
 window.scrollTo = () => {};
-
-for (const f of ['program.js', 'app.js']) window.eval(fs.readFileSync(f, 'utf8'));
-window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
-
-const q = (s) => document.querySelector(s);
-const qa = (s) => [...document.querySelectorAll(s)];
-
-// 1. eight cycle-day buttons, nothing else in the chrome
-const btns = qa('.daybtn');
-if (btns.length !== 8) throw new Error(`expected 8 day buttons, got ${btns.length}`);
-console.log('nav      ->', btns.map(b => b.textContent).join(' '));
-
-// 2. every day renders with a title and at least one set row
-for (const b of btns) {
-  b.click();
-  const title = q('.dayhead h1').textContent;
-  const rows = qa('.setrow').length;
-  const exs = qa('.ex').length;
-  if (!title || !rows) throw new Error(`day ${b.dataset.day} rendered empty`);
-  console.log(String(b.dataset.day).padEnd(4), '->', title.padEnd(13), `${exs} exercises, ${rows} set rows`);
-}
-
-// 3. exactly two rest days, and they land on every 4th
-const restIdx = window.PROGRAM.days.map((d, i) => (d.rest ? i : -1)).filter(i => i >= 0);
-if (restIdx.join(',') !== '3,7') throw new Error(`rest days at ${restIdx} — expected index 3 and 7`);
-console.log('rest     -> day 4 and day 8, every 4th day');
-
-// 4. the cycle anchor maps today onto a day, and resync moves it
-const beforeId = window.APEX.todayId();
-window.APEX.resyncTo(4);           // pretend today is day 5
-if (window.APEX.todayId() !== 'd5') throw new Error('resync did not move the anchor');
-window.APEX.resyncTo(window.PROGRAM.days.findIndex(d => d.id === beforeId));
-console.log('cycle    -> anchor', window.APEX.getAnchor(), '/ today is', window.APEX.todayId());
-
-// 5. log a weight, confirm it persists across a re-render
-q('.daybtn[data-day="d1"]').click();
-const box = q('.ex .box');
-box.value = '205';
-box.dispatchEvent(new window.Event('input', { bubbles: true }));
-q('.daybtn[data-day="d2"]').click();
-q('.daybtn[data-day="d1"]').click();
-if (q('.ex .box').value !== '205') throw new Error('value did not persist');
-console.log('persist  -> 205 survived a day switch');
-
-// 6. check toggle persists
-const check = q('.check');
-check.click();
-if (!check.classList.contains('on')) throw new Error('check did not toggle');
-q('.daybtn[data-day="d3"]').click();
-q('.daybtn[data-day="d1"]').click();
-if (!q('.check').classList.contains('on')) throw new Error('check did not persist');
-console.log('check    -> toggled and persisted');
-
-// 7. START DAY FRESH wipes the day
+window.fetch = () => Promise.reject(new Error('offline in test'));
 window.confirm = () => true;
-q('.startbtn').click();
-if (q('.ex .box').value !== '') throw new Error('start fresh did not clear the log');
-if (q('.check').classList.contains('on')) throw new Error('start fresh did not clear checks');
-if (!q('.started').textContent.startsWith('started')) throw new Error('start fresh did not stamp a time');
-console.log('reset    ->', q('.started').textContent);
+for (const f of ['program.js', 'engine.js', 'app.js']) window.eval(fs.readFileSync(f, 'utf8'));
+window.document.dispatchEvent(new window.Event('DOMContentLoaded'));
+const q = s => window.document.querySelector(s), qa = s => [...window.document.querySelectorAll(s)];
 
-// 8. export produces self-describing JSON covering the whole cycle
-q('.daybtn[data-day="d7"]').click();
-const sbox = qa('.ex').find(e => e.querySelector('.exname').textContent.startsWith('Rear-foot')).querySelector('.box');
-sbox.value = '55';
-sbox.dispatchEvent(new window.Event('input', { bubbles: true }));
-const json = JSON.parse(window.APEX.buildExport());
-if (json.app !== 'APEX') throw new Error('export missing app name');
-if (json.cycleLength !== 8 || !json.cycleAnchor) throw new Error('export missing cycle metadata');
-const legsB = json.days.find(d => d.title === 'LEGS B');
-if (!legsB) throw new Error('export dropped Legs B');
-const ex = legsB.sections[0].exercises[0];
-if (!ex.prescribed || !ex.sets.length) throw new Error('export entry not self-describing');
-console.log('export   ->', json.days.length, 'days,', legsB.day, '/', ex.name, '/', JSON.stringify(ex.sets[0]));
-
-// 9. nothing he vetoed survived as a prescribed movement
-//    (the notes may still NAME them — "replaces the dragon flag" — that's the point)
-const names = window.PROGRAM.days
-  .flatMap(d => d.sections).flatMap(s => s.items)
-  .map(i => i.name.toLowerCase());
-for (const b of ['dragon flag', 'hollow rock', 'bench reverse crunch',
-                 'serratus band punch', 'landmine', 'ankle + foot prep']) {
-  if (names.some(n => n.includes(b))) throw new Error(`vetoed movement still prescribed: ${b}`);
+ok(q('.big').textContent === 'Day 1?', 'first run asks for Day 1');
+qa('.btn').find(b => b.textContent === 'TODAY').click();
+const anchor = window.APEX.db.meta.anchor.value;
+for (let i = 0; i < 4; i++) {
+  window.APEX.setView(E.addDays(anchor, i));
+  const title = q('.big').textContent, cards = qa('.card.ex').length;
+  ok(title === ['PULL', 'PUSH', 'LEGS', 'RECOVERY'][i] && cards > 0, `${title} renders ${cards} exercises`);
+  ok(qa('textarea.notes').length === 1, `${title} has a notes box`);
 }
-if (!names.some(n => n.includes('bench stretch crunch'))) throw new Error('bench stretch crunch went missing — he likes that one');
+window.APEX.setView(E.addDays(anchor, 2));
+ok(qa('.jumprow').length === 3, 'Legs opens with 3 jump rows in week 1');
+window.APEX.setView(anchor);
+ok(qa('details.tests').length === 1, 'cycle 1 shows the tests card');
+qa('.check')[0].click();
+const logged = Object.values(window.APEX.db.sets)[0];
+ok(logged && logged.done === 1 && logged.reps === 5 && logged.ex === 'kb_snatch', 'ticking an empty set logs the target');
+ok(Object.keys(JSON.parse(window.localStorage.getItem('apex.v4.outbox'))).length >= 2, 'edits wait in the outbox');
 
-// 10. knee-to-wall survives only on legs + reset days
-const kneeDays = window.PROGRAM.days
-  .filter(d => d.sections.flatMap(s => s.items).some(i => i.name.startsWith('Knee-to-wall')))
-  .map(d => d.id);
-if (kneeDays.join(',') !== 'd3,d4,d7,d8') throw new Error(`knee-to-wall on ${kneeDays} — expected d3,d4,d7,d8`);
-console.log('warmups  -> no foot block anywhere; knee-to-wall on legs + reset only');
-console.log('vetoes   -> dragon flag, bench reverse crunch, hollow rock all gone; stretch crunch kept');
+/* ---------- 3. server ---------- */
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apex-'));
+const port = 18787 + Math.floor(Math.random() * 500);
+const srv = spawn(process.execPath, ['server/server.mjs'], {
+  env: { ...process.env, PORT: String(port), APEX_DB: path.join(tmp, 't.db'), NODE_NO_WARNINGS: '1' }, stdio: 'pipe',
+});
+await new Promise(r => srv.stdout.once('data', r));
+try {
+  const base = `http://127.0.0.1:${port}`;
+  const rec = { id: '2026-10-23|bench|1', date: '2026-10-23', ex: 'bench', set_no: 1, weight: 165, reps: 8, done: 1, updated_at: '2026-10-23T10:00:00Z' };
+  let r = await fetch(base + '/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ records: [{ kind: 'sets', rec }, { kind: 'days', rec: { date: '2026-10-23', notes: 'felt good', foot: 1, updated_at: '2026-10-23T10:00:00Z' } }] }) });
+  let j = await r.json();
+  ok(j.applied === 2 && j.state.sets.length === 1 && j.state.days[0].notes === 'felt good', 'server stores a set and a day note');
+  r = await fetch(base + '/api/sync', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ records: [{ kind: 'sets', rec: { ...rec, reps: 3, updated_at: '2026-10-22T00:00:00Z' } }] }) });
+  j = await r.json();
+  ok(j.state.sets[0].reps === 8, 'older edit does not overwrite a newer one');
+  ok((await fetch(base + '/')).status === 200 && (await fetch(base + '/icons/icon-192.png')).status === 200, 'server serves the app');
+  ok((await fetch(base + '/server/server.mjs')).status === 404 && (await fetch(base + '/apex.db')).status === 404, 'server refuses non-app files');
+} finally { srv.kill(); }
 
-console.log('OK — no render errors');
+window.close();
+console.log('\nall green');
+process.exit(0);

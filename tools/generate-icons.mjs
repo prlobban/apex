@@ -1,6 +1,7 @@
-/* Generates APEX PWA icons with zero dependencies.
-   Pure black & white: black tile, white barbell.
-   Writes icon-192.png, icon-512.png and maskable-512.png into ../icons/.
+/* Generates APEX icons with zero dependencies.
+   Black tile, white peak (the "apex") over a barbell.
+   4×4 supersampling per pixel, so edges are smooth, not stair-stepped.
+   Writes icon-192, icon-512, maskable-512 and apple-touch-icon (180) into ../icons/.
 
    Run:  node tools/generate-icons.mjs
 */
@@ -12,9 +13,6 @@ import { dirname, join } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, '..', 'icons');
 mkdirSync(outDir, { recursive: true });
-
-const BLACK = [0x00, 0x00, 0x00];
-const WHITE = [0xff, 0xff, 0xff];
 
 function crc32(buf) {
   let c = ~0;
@@ -31,52 +29,72 @@ function chunk(type, data) {
   return Buffer.concat([len, t, data, crc]);
 }
 
-/* A barbell, drawn in normalised 0..1 space and scaled by `k` about centre.
-   k = 1.00 for the plain icon, 0.62 for the maskable safe zone. */
-function barbell(nx, ny, k) {
-  const x = 0.5 + (nx - 0.5) / k;
-  const y = 0.5 + (ny - 0.5) / k;
-  const box = (x0, x1, y0, y1) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+/* ---- shapes, in normalised 0..1 space ---- */
+const roundRect = (x, y, x0, x1, y0, y1, r) => {
+  if (x < x0 || x > x1 || y < y0 || y > y1) return false;
+  const cx = Math.min(Math.max(x, x0 + r), x1 - r), cy = Math.min(Math.max(y, y0 + r), y1 - r);
+  return (x - cx) ** 2 + (y - cy) ** 2 <= r * r;
+};
+// is p left of the line a->b
+const side = (px, py, ax, ay, bx, by) => (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+const inTri = (px, py, a, b, c) => {
+  const d1 = side(px, py, ...a, ...b), d2 = side(px, py, ...b, ...c), d3 = side(px, py, ...c, ...a);
+  return !((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0));
+};
 
-  // the bar
-  if (box(0.16, 0.84, 0.472, 0.528)) return true;
-  // inner plates (tall)
-  if (box(0.300, 0.368, 0.310, 0.690)) return true;
-  if (box(0.632, 0.700, 0.310, 0.690)) return true;
-  // outer plates (short)
-  if (box(0.212, 0.262, 0.383, 0.617)) return true;
-  if (box(0.738, 0.788, 0.383, 0.617)) return true;
+/* the peak: a mitred chevron, outer triangle minus the same triangle dropped by T */
+const T = 0.085, BASE = 0.46;
+const outer = [[0.5, 0.19], [0.30, BASE + 0.0], [0.70, BASE + 0.0]];
+const slope = (BASE - 0.19) / 0.20;
+const inner = [[0.5, 0.19 + T * Math.hypot(1, 1 / slope) * 1.0], [0.30 - 0.0, BASE + T * Math.hypot(1, 1 / slope)], [0.70, BASE + T * Math.hypot(1, 1 / slope)]];
+function peak(x, y) {
+  if (y > BASE) return false;
+  return inTri(x, y, ...outer) && !inTri(x, y, ...inner);
+}
+
+function barbell(x, y) {
+  if (roundRect(x, y, 0.13, 0.87, 0.64, 0.68, 0.02)) return true;            // bar
+  if (roundRect(x, y, 0.285, 0.355, 0.53, 0.79, 0.018)) return true;         // inner plates
+  if (roundRect(x, y, 0.645, 0.715, 0.53, 0.79, 0.018)) return true;
+  if (roundRect(x, y, 0.21, 0.265, 0.585, 0.735, 0.015)) return true;        // outer plates
+  if (roundRect(x, y, 0.735, 0.79, 0.585, 0.735, 0.015)) return true;
   return false;
 }
 
+/* k scales the mark about the centre (1 = full, 0.7 = maskable safe zone) */
+function ink(nx, ny, k) {
+  const x = 0.5 + (nx - 0.5) / k, y = 0.5 + (ny - 0.5) / k;
+  return peak(x, y) || barbell(x, y);
+}
+
 function png(size, k) {
+  const SS = 4;
   const raw = Buffer.alloc(size * (size * 3 + 1));
   let o = 0;
-  for (let y = 0; y < size; y++) {
-    raw[o++] = 0; // filter: none
-    for (let x = 0; x < size; x++) {
-      const c = barbell((x + 0.5) / size, (y + 0.5) / size, k) ? WHITE : BLACK;
-      raw[o++] = c[0]; raw[o++] = c[1]; raw[o++] = c[2];
+  for (let py = 0; py < size; py++) {
+    raw[o++] = 0;
+    for (let px = 0; px < size; px++) {
+      let hits = 0;
+      for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) {
+        if (ink((px + (sx + 0.5) / SS) / size, (py + (sy + 0.5) / SS) / size, k)) hits++;
+      }
+      const v = Math.round(255 * hits / (SS * SS));
+      raw[o++] = v; raw[o++] = v; raw[o++] = v;
     }
   }
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0; // 8-bit RGB
+  ihdr[8] = 8; ihdr[9] = 2; ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr),
-    chunk('IDAT', deflateSync(raw)),
-    chunk('IEND', Buffer.alloc(0)),
+    chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
   ]);
 }
 
-const jobs = [
-  ['icon-192.png', 192, 1.0],
-  ['icon-512.png', 512, 1.0],
-  ['maskable-512.png', 512, 0.62],
-];
-for (const [name, size, k] of jobs) {
-  const file = join(outDir, name);
-  writeFileSync(file, png(size, k));
-  console.log('wrote', file);
+for (const [name, size, k] of [
+  ['icon-192.png', 192, 0.92], ['icon-512.png', 512, 0.92],
+  ['maskable-512.png', 512, 0.70], ['apple-touch-icon.png', 180, 0.86],
+]) {
+  writeFileSync(join(outDir, name), png(size, k));
+  console.log('wrote', name);
 }

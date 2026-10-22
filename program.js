@@ -1,359 +1,224 @@
 /* ============================================================
    APEX — THE PROGRAM (data only, no app logic)
    ------------------------------------------------------------
-   Edit this file to change the plan. app.js never needs touching.
+   APEX Hybrid, 8-week block. The words live in the vault doc
+   (apex-hybrid-block-2026-10.md). This file is that doc as data.
 
-   The block is an 8-DAY CYCLE, not a week:
-       D1 Push A · D2 Pull A · D3 Legs A · D4 Reset
-       D5 Push B · D6 Pull B · D7 Legs B · D8 Reset + gate test
-   Rest lands on every 4th day. It does not line up with the
-   calendar week, and that is on purpose.
+   The block is 56 days = 14 four-day cycles:
+       Pull · Push · Legs · Recovery, repeated.
+   The block start date lives in the database, not here.
 
-   DAY     = { id, name, short, rest, title, sub, sections:[SECTION] }
-   SECTION = { label, items:[ITEM] }
-   ITEM    = { name, sets, target, load, rest, note, cols }
-       sets   -> how many logging rows get rendered
-       target -> rep / time target shown on the header line
-       load   -> target load text ("205-215", "2x60", "")
-       cols   -> [leftBoxLabel, rightBoxLabel]; default ['lb','reps']
-                 ['—','done'] renders a bare tick, no input boxes
-
-   Running is NOT in this app — Pearce runs on his own.
+   EXERCISE = { id, name, cue, rest, perSide, tags, unit, guess, stages:[STAGE] }
+   STAGE    = { label, sets, lo, hi, inc, weights?, perSide? }
+     weights -> a ladder of loads (lb); the app shows a weight box.
+                No weights = bodyweight / band / version only.
+     lo..hi  -> the rep (or seconds / metres) range. Start at lo,
+                +inc each cycle while every set hits the target.
+                At hi on every set -> next weight on the ladder, or
+                the next stage once the ladder runs out.
+   Running and jumps change by WEEK, not by what you log.
    ============================================================ */
 'use strict';
 
-var X = function (name, sets, target, load, rest, note, cols) {
-  return {
-    name: name, sets: sets, target: target,
-    load: load || '', rest: rest || '', note: note || '',
-    cols: cols || ['lb', 'reps'],
-  };
-};
+/* Barbell loads the plates can make (45 bar + pairs of 10, 15, 25).
+   155 and 205 are impossible. */
+var BAR = [135, 145, 165, 175, 185, 195, 215];
+function barFrom(w) { return BAR.filter(function (x) { return x >= w; }); }
 
-/* ------------------------------------------------------------
-   WARM-UPS — day-specific, and they are half the injury plan.
-   The foot/ankle prehab block moved OUT of here on 2026-09-10:
-   it belongs to the pre-run, and the run is not in this app.
-   Each warm-up is now built only for what that session loads.
-   kind: push | pull | legs | reset
-   ------------------------------------------------------------ */
-var WARMUP = function (kind) {
-  var items = [];
+/* Dumbbell pairs run 5-60 in 5s, with no 30 pair. */
+function dbFrom(w, max) {
+  var out = [];
+  for (var x = w; x <= (max || 60); x += 5) if (x !== 30) out.push(x);
+  return out;
+}
 
-  /* The foot/ankle block lives in the PRE-RUN, which is not in this app.
-     It is not repeated here. Knee-to-wall survives only where it earns its
-     place: before loaded legs, and on the reset days where mobility lives. */
-  if (kind === 'legs' || kind === 'reset') {
-    items.push(X('Knee-to-wall + balance', 1, '2 min', '', '',
-      'Half-kneeling knee-to-wall 2x10/side. Single-leg balance 2x30s, eyes closed. Dorsiflexion before anything loads the ankle.', ['—', 'done']));
-  }
-
-  if (kind === 'push') {
-    items.push(X('T-spine + scap prep', 1, '3 min', '', '',
-      'Foam-roller thoracic extension x10. Forearm wall slide 2x10 — REACH tall at the top and let the shoulder blade travel. Scap push-up 2x10. Band pull-apart 2x15.', ['—', 'done']));
-    items.push(X('Cuff prep — right side first', 1, '3 min', '', '',
-      'Band external rotation at 0 degrees, towel under the elbow, 2x15 with a 2s hold. Then band ER at 90 degrees 1x12, PAIN-FREE RANGE ONLY. This is the work that keeps you pressing.', ['—', 'done']));
-    items.push(X('SHOULDER SCREEN — go / no-go', 1, '10 reps', '', '',
-      'Broomstick or empty bar pressed overhead x10, slow. Clean and pain-free -> press today. Anything sharp, or pain above 3/10 -> ALL overhead work is off today and the horizontal pressing stays. This is the check you did not have on the day you had to stop after set 2.', ['—', 'pass']));
-  } else if (kind === 'pull') {
-    items.push(X('T-spine + scap prep', 1, '3 min', '', '',
-      'Open book 2x8/side. Band pull-apart 2x15. Scap pull-up 2x8 — blades only, arms stay straight. Dead hang 2x20s, knees tucked.', ['—', 'done']));
-    items.push(X('Cuff + elbow prep', 1, '2 min', '', '',
-      'Band external rotation at 0 degrees 2x15, 2s hold. Band curl 1x20 light — the elbows take real volume today.', ['—', 'done']));
-  } else if (kind === 'legs') {
-    items.push(X('Hips', 1, '3 min', '', '',
-      'Leg swings 10 each way per leg. Hip CARs 5/side. 90/90 transitions 2x5/side. Glute bridge 2x12.', ['—', 'done']));
-    items.push(X('Achilles ramp — the important one', 1, '3 min', '', '',
-      'Bilateral heel raise x15 brisk, then x10 slow, then SINGLE LEG x8 left and x8 right, pain-free only. Never load a squat or a hinge on a cold right Achilles. Then bodyweight squat 2x10, second set 3s down.', ['—', 'done']));
-  }
-
-  if (kind !== 'reset') {
-    items.push(X('Ramp the first lift', 1, '3-4 sets', '', '',
-      'Empty bar, then climb to your working weight. Never start cold on the anchor.', ['—', 'done']));
-  }
-
-  return { label: 'WARM-UP', items: items };
-};
-
-/* Shoulder rehab block — both reset days. Loaded rehab, not rest:
-   progressive loading is the treatment for cuff-related shoulder
-   pain, and doing nothing is the one option with no evidence. */
-var SHOULDER = function () {
-  return {
-    label: 'RIGHT SHOULDER — rehab block, 10 min',
-    items: [
-      X('Isometric ER hold', 5, '30s', 'band', '30s',
-        'Elbow pinned at your side, 50-70% effort, push out against the band and hold. Pain-modulating. Do this FIRST — it usually makes everything after it feel better.', ['—', 'sec']),
-      X('Band ER at 0 degrees', 3, '15', 'band', '45s',
-        'Towel under the elbow. 2s out, 3s back. Right side leads and sets the reps, left matches and never exceeds — same rule as the calf.'),
-      X('Serratus wall slide', 3, '10', 'bw', '45s',
-        'Forearms on the wall, slide up and REACH at the top. Upward rotation of the scapula is what makes room under the acromion. This is the missing link in most overhead pain.', ['—', 'done']),
-      X('Prone / wall Y raise', 3, '12', 'light', '45s',
-        'Lower trap. Thumbs up, arms at about 45 degrees from your head, lift from the blade not the hand. Light or bodyweight — this never gets heavy.'),
-      X('Band face pull, thumbs back', 3, '20', 'band', '45s',
-        'Finish in external rotation. Rear delt and cuff in one.'),
-      X('Cross-body posterior capsule stretch', 2, '30s/side', '', '',
-        'ONLY if internal rotation is visibly tighter on the right. Blade pinned to the floor or wall — otherwise you stretch the capsule forward and make it worse.', ['—', 'sec']),
-    ],
-  };
-};
-
-/* Return-to-OHP test — all three must pass on the same reset day
-   before overhead barbell pressing comes back. */
-var OHP_TEST = function () {
-  return {
-    label: 'RETURN-TO-BARBELL-OHP TEST — all three or none',
-    items: [
-      X('1. Pain-free full elevation', 1, 'pass/fail', '', '',
-        'Both arms straight overhead, slow, no shrug and no lean to get there. Compare left to right.', ['—', 'pass']),
-      X('2. Empty bar OHP 2x10', 1, 'pass/fail', '', '',
-        'Pain 2/10 or less through the whole range, and no increase the next morning. The morning after is half the test.', ['—', 'pass']),
-      X('3. Band ER endurance — R within 10% of L', 1, 'reps R', '', '',
-        'Band ER at 0 degrees to form failure, 2s out 2s back, left then right. Same 10% symmetry rule as the calf gate. Log the right-side reps.', ['—', 'reps']),
-      X('All three passed -> BARBELL OHP returns', 1, '—', '', '',
-        'You are already pressing overhead with dumbbells — this test is what unlocks the BARBELL. Re-entry is empty bar 3x10, then half your old load for one full cycle, then normal. Fail any one of the three and seated neutral-grip DB OHP stays — retest next cycle.', ['—', 'ok']),
-    ],
-  };
-};
+function S(label, sets, lo, hi, inc, extra) {
+  var s = { label: label, sets: sets, lo: lo, hi: hi, inc: inc == null ? 1 : inc };
+  if (extra) Object.keys(extra).forEach(function (k) { s[k] = extra[k]; });
+  return s;
+}
+function bands(names, sets, lo, hi, inc, extra) {
+  return names.map(function (n) { return S(n + ' band', sets, lo, hi, inc, extra); });
+}
 
 var PROGRAM = {
-  name: 'APEX',
-  version: '2026-09 PPL/Reset — 8-day cycle',
-  cycleLength: 8,
-  days: [
+  version: 'hybrid-2026-10',
+  name: 'APEX Hybrid',
+  blockDays: 56,
+  order: ['pull', 'push', 'legs', 'recovery'],
+  deloadCycles: [7, 14],
+  testCycles: [1, 7, 14],
 
-    /* =============================================== D1 PUSH A */
-    {
-      id: 'd1', name: 'Day 1', short: '1', title: 'PUSH A', sub: 'Heavy bench · normal run',
-      sections: [
-        WARMUP('push'),
-        {
-          label: 'LIFT',
-          items: [
-            X('Barbell bench', 5, '3-5', '205-215', '3:00',
-              'THE ANCHOR. 215 = 91% of your max. Grip about 1.5x shoulder width, elbows 45-60 degrees, blades pinned back and down for the whole set. Wide grip and flared elbows are what turn heavy benching into a shoulder problem.'),
-            X('Incline DB press', 3, '8-10', '2x60', '2:00', 'Neutral or 45-degree grip, not full pronation.'),
-            X('Seated neutral-grip DB OHP', 3, '6-8', '2x50-60', '2:00',
-              'REPLACES STANDING BARBELL OHP while the right shoulder is symptomatic. Seated with back support, palms facing each other the whole way. Neutral grip and an independent path per arm is the lowest-compression way to press overhead. Governed by the morning screen: screen failed = skip it, add a 4th set of incline DB press instead.'),
-            X('Lateral raise', 4, '15', '', '45s',
-              'Stop AT shoulder height, not above. Thumb neutral or slightly up — never pour-the-jug. Superset with the triceps below.'),
-            X('Overhead band triceps ext', 4, '12', 'band', '45s'),
-          ],
-        },
-        {
-          label: 'ABS — lower rectus / posterior tilt',
-          items: [
-            X('Floor reverse crunch, rack-anchored', 4, '12-15', 'bw', '45s',
-              'On the floor, hands gripping the rack uprights behind your head. Curl the hips fully off the floor, 3s down. The pelvis moves, not the legs. Ladder: bent knee, then straight leg, then 3s eccentric.'),
-            X('Hollow hold', 3, '30s', 'bw', '30s', 'Lower back stays flat on the floor. Bring the legs closer to make that true.', ['—', 'sec']),
-          ],
-        },
+  /* easy daily run, mi/day by week 1-8 */
+  running: {
+    miles: [2.5, 2.75, 2.75, 3.0, 3.0, 3.0, 3.0, 3.0],
+    stridesFromWeek: 6,
+    stridesOn: 'pull',
+    strides: '4 × 15s at ~80%, walk back. Swap them for easy miles, never add.',
+    timeTrialDay: 53,
+  },
+
+  /* ---------------- jumps: open the Legs session ---------------- */
+  jumps: {
+    note: 'On the mats, in shoes. A set ends at the first sloppy landing.',
+    gateNote: 'Single-leg jumps only go in if the week-4 heel-raise test passed (right within 10% of left). Otherwise repeat the weeks 3-4 jumps.',
+    phases: [
+      { weeks: [1, 2], rows: [
+        { name: 'Two-foot pogo hops', sets: 3, reps: 15, rest: '0:30', cycle1Sets: 2 },
+        { name: 'Box jump, step down', sets: 4, reps: 5, rest: '0:45' },
+        { name: 'Broad jump + stick the landing', sets: 4, reps: 4, rest: '0:45' },
+      ] },
+      { weeks: [3, 4], rows: [
+        { name: 'Two-foot pogo hops', sets: 3, reps: 20, rest: '0:30' },
+        { name: 'Box jump, step down', sets: 5, reps: 5, rest: '0:45' },
+        { name: 'Broad jump + stick the landing', sets: 5, reps: 4, rest: '0:45' },
+      ] },
+      { weeks: [5, 6, 7, 8], gated: true, rows: [
+        { name: 'Two-foot pogo hops', sets: 2, reps: 15, rest: '0:30' },
+        { name: 'Box jump, step down', sets: 3, reps: 5, rest: '0:45', fromWeek6: 'Seated box jump, from sitting on the bench' },
+        { name: 'Broad jump + stick the landing', sets: 3, reps: 4, rest: '0:45' },
+        { name: 'Single-leg pogo hops, right first', sets: 2, reps: 10, rest: '0:30', perSide: 'each leg', singleLeg: true },
+        { name: 'Skater bound + stick', sets: 3, reps: 4, rest: '0:45', perSide: 'each side', singleLeg: true },
+      ] },
+    ],
+  },
+
+  /* ---------------- the four days ---------------- */
+  sessions: {
+
+    pull: {
+      title: 'PULL', short: 'PULL', time: '~58 min',
+      warmup: 'Band pull-aparts 2×15 · band external rotation 2×15 · scap pull-ups 2×8 · 5 easy pull-ups',
+      exercises: [
+        { id: 'kb_snatch', name: 'KB snatch', cue: 'Explosive, one arm.', rest: '0:45', perSide: 'each arm', explosive: true,
+          stages: [S('40 lb KB', 3, 5, 10), S('40 lb KB', 4, 6, 10), S('50 lb DB', 3, 5, 10)] },
+        { id: 'pullup', name: 'Pull-ups', cue: 'Knees bent.', rest: '1:30',
+          stages: [S('Regular', 4, 12, 15), S('Wide grip', 4, 10, 15),
+                   S('Archer', 4, 4, 8, 1, { perSide: 'each side' }),
+                   S('Typewriter', 4, 4, 8, 1, { perSide: 'each side' })] },
+        { id: 'chinup', name: 'Chin-ups', rest: '1:15',
+          stages: [S('Regular', 3, 12, 15), S('3s lowering on every rep', 3, 8, 12),
+                   S('Archer chin-up', 3, 4, 8, 1, { perSide: 'each side' })] },
+        { id: 'bb_row', name: 'Barbell row', cue: 'Torso ~45°, flat back, pull to the belly button.', rest: '1:30', guess: true,
+          stages: [S('Barbell', 4, 6, 10, 1, { weights: barFrom(145) })] },
+        { id: 'shrug', name: 'Barbell shrug', cue: '2s squeeze at the top.', rest: '1:00', guess: true,
+          stages: [S('Barbell', 3, 12, 20, 2, { weights: barFrom(185) }),
+                   S('215, 3s hold at the top', 3, 12, 20, 2, { weights: [215] })] },
+        { id: 'cossack', name: 'KB Cossack squat', cue: 'Weight held at your chest.', rest: '0:45', perSide: 'each side',
+          stages: [S('40 lb KB', 3, 8, 12), S('50 lb DB', 3, 8, 12), S('60 lb DB', 3, 8, 12)] },
+        { id: 'y_raise', name: 'Incline Y-raise', cue: 'Chest down on the bench at ~30°, arms in a Y.', rest: '0:45',
+          stages: [S('DBs', 2, 12, 20, 2, { weights: [5, 10, 15, 20] })] },
+        { id: 'face_pull', name: 'Band face pull', cue: 'Thumbs back.', rest: '0:45',
+          stages: bands(['Medium', 'Heavy'], 2, 15, 20, 2) },
+        { id: 'neck_ext', name: 'Band neck extension', cue: 'Band round the back of the head, anchored in front.', rest: '0:30',
+          stages: bands(['Light', 'Medium', 'Heavy'], 2, 15, 25, 2) },
       ],
     },
 
-    /* =============================================== D2 PULL A */
-    {
-      id: 'd2', name: 'Day 2', short: '2', title: 'PULL A', sub: 'Heavy vertical / hinge-free · normal run',
-      sections: [
-        WARMUP('pull'),
-        {
-          label: 'LIFT',
-          items: [
-            X('Weighted pull-up', 5, '3-5', '+40 KB / 60 DB', '3:00', 'THE ANCHOR. Full hang, no kip.'),
-            X('Chest-supported incline DB row', 3, '10-12', '2x60', '90s', 'Lats without erector girth.'),
-            X('DB pullover', 3, '12-15', '', '60s', 'Best non-cable lat lengthener you own.'),
-            X('Band face pull', 3, '20', 'band', '45s', 'Thumbs back, finish in external rotation.'),
-            X('Incline DB curl', 3, '10-12', '', '45s'),
-          ],
-        },
-        {
-          label: 'ABS — anti-extension, full ROM',
-          items: [
-            X('Ab-wheel rollout', 4, '8-12', 'bw', '60s',
-              'Ribs down, no lumbar sag at end range. Ladder: knees, then long lever, then standing.'),
-            X('TVA vacuum', 3, '30s', '', '30s', '', ['—', 'sec']),
-          ],
-        },
-        {
-          label: 'NOTE',
-          items: [
-            X('No hinging today', 1, '—', '', '',
-              'Legs A is tomorrow. No barbell rows, no deadlifts.', ['—', 'ok']),
-          ],
-        },
+    push: {
+      title: 'PUSH', short: 'PUSH', time: '~58 min',
+      warmup: 'Easy rope 2 min · band external rotation 2×15 · push-up plus 2×15 · bench warm-up sets',
+      warmupFromWeek3: 'From week 3, if your feet are 0-2: the rope becomes 1 min easy + 3 × 15s fast, stiff-ankle bounces.',
+      exercises: [
+        { id: 'plyo_pushup', name: 'Plyo push-up', cue: 'Hands leave the floor every rep. The set ends when they stop leaving it.', rest: '1:00', explosive: true,
+          stages: [S('Plyo push-up', 4, 8, 12), S('Clap push-up', 4, 8, 12), S('Feet-on-bench clap', 4, 8, 12)] },
+        { id: 'bench', name: 'Bench press', cue: 'Grip ~1.5× shoulder width, elbows 45-60°.', rest: '2:00', guess: true,
+          stages: [S('Barbell', 4, 8, 12, 1, { weights: barFrom(165) })] },
+        { id: 'hspu', name: 'Handstand push-up', rest: '1:30',
+          stages: [S('Wall HSPU, head to a cushion', 3, 6, 10), S('Full wall HSPU', 3, 5, 10),
+                   S('Deficit, hands on DBs', 3, 5, 10), S('Deficit + 3s lowering', 3, 5, 10)] },
+        { id: 'pushup_ladder', name: 'Push-up ladder', rest: '1:30',
+          stages: [S('Deficit push-up on DBs', 3, 12, 20), S('Archer push-up', 3, 6, 12, 1, { perSide: 'each side' }),
+                   S('Pseudo-planche push-up', 3, 6, 12)] },
+        { id: 'pallof', name: 'Band Pallof press', cue: 'Band round a rack upright at chest height. Press out, 2s hold.', rest: '0:30', perSide: 'each side',
+          stages: bands(['Medium', 'Heavy'], 3, 10, 16, 2) },
+        { id: 'lateral', name: 'DB lateral raise', rest: '0:45', guess: true,
+          stages: [S('DBs', 2, 12, 20, 2, { weights: [20, 25] }),
+                   S('Lean-away raise off a rack upright', 2, 12, 20, 2, { weights: [25] })] },
+        { id: 'ab_wheel', name: 'Ab wheel', rest: '0:45',
+          stages: [S('From the knees', 3, 8, 15), S('Knees, roll out further', 3, 8, 15),
+                   S('Standing, roll to a wall', 3, 8, 15), S('Full standing', 3, 8, 15)] },
+        { id: 'windmill', name: 'KB windmill', cue: 'Weight overhead, eyes on it.', rest: '0:30', perSide: 'each side',
+          stages: [S('40 lb KB', 2, 6, 10), S('45 lb DB', 2, 6, 10), S('50 lb DB', 2, 6, 10)] },
+        { id: 'neck_flex', name: 'Band neck flexion', cue: 'Band round the forehead, anchored behind.', rest: '0:30',
+          stages: bands(['Light', 'Medium', 'Heavy'], 2, 15, 25, 2) },
       ],
     },
 
-    /* =============================================== D3 LEGS A */
-    {
-      id: 'd3', name: 'Day 3', short: '3', title: 'LEGS A', sub: 'Heavy bilateral · SHORTEST run',
-      sections: [
-        WARMUP('legs'),
-        {
-          label: 'LIFT',
-          items: [
-            X('Front squat', 5, '3', '215', '3:00', 'THE ANCHOR. 215 = 84% of your front squat max.'),
-            X('Snatch-grip 2in deficit deadlift', 3, '3', '215', '2:30', 'The ONLY heavy hinge of the cycle. 88%.'),
-            X('Barbell hip thrust', 4, '10-12', '', '90s', 'Best growth-per-unit-cost lift you have. Zero ankle demand.'),
-            X('Slider / band leg curl', 4, '10', '', '75s', 'Foot passive throughout.'),
-            X('Seated bent-knee calf raise', 4, '8', 'KB on knee', '90s',
-              'LAST in the session. 3s up / 2s hold / 3s down. RIGHT LEG SETS THE REPS, left matches and never exceeds.'),
-          ],
-        },
-        {
-          label: 'NOTE',
-          items: [
-            X('No abs today — Reset is tomorrow', 1, '—', '', '',
-              'Abs live on the four upper days. Back squat is demoted: 215 goes 10-12 reps, so it fails as an anchor.', ['—', 'ok']),
-          ],
-        },
+    legs: {
+      title: 'LEGS', short: 'LEGS', time: '~57 min', jumps: true,
+      warmup: 'Easy rope 2 min · ankle rocks ×10 each · tib raises ×20 · slow calf raises 2×15 · single-leg calf hold 2×30s (right first) · band side-walk ×10 each way',
+      afterJumps: 'Front-squat warm-up sets (3 min).',
+      footer: 'Run after this session, never before it.',
+      exercises: [
+        { id: 'front_squat', name: 'Front squat', rest: '2:00', guess: true, tags: ['legs'],
+          stages: [S('Barbell', 4, 6, 10, 1, { weights: barFrom(165) }),
+                   S('215, 2s pause at the bottom', 4, 6, 10, 1, { weights: [215] })] },
+        { id: 'pistol', name: 'Pistol squat', cue: 'Right leg first.', rest: '1:00', perSide: 'each leg', tags: ['legs'],
+          stages: [S('Holding a 10 lb plate out front', 3, 5, 10), S('Full pistol', 3, 5, 10),
+                   S('KB at your chest', 3, 5, 10), S('KB + 3s lowering', 3, 5, 10)] },
+        { id: 'sl_rdl', name: 'Single-leg RDL', cue: 'DB in each hand. Weight is per hand.', rest: '1:00', perSide: 'each leg', guess: true, tags: ['legs'],
+          stages: [S('DBs', 3, 8, 12, 1, { weights: dbFrom(40) })] },
+        { id: 'ham_curl', name: 'Band hamstring curl', cue: 'Lying face down, band anchored to the rack.', rest: '0:45', tags: ['legs'],
+          stages: [S('Heavy band', 3, 12, 20, 2), S('Heavy band, 3s lowering', 3, 12, 20, 2),
+                   S('Heavy band, one leg at a time', 3, 12, 20, 2, { perSide: 'each leg' })] },
       ],
     },
 
-    /* =============================================== D4 RESET */
-    {
-      id: 'd4', name: 'Day 4', short: '4', rest: true, title: 'RESET', sub: 'Mobility + shoulder · LONGEST run',
-      sections: [
-        WARMUP('reset'),
-        SHOULDER(),
-        {
-          label: 'MOBILITY — 25 min',
-          items: [
-            X('Half-kneeling knee-to-wall', 3, '10/side', '', '',
-              'REHAB, not stretching. Dorsiflexion restriction on the repaired side drives the pronation that loads your tib post.', ['—', 'done']),
-            X('90/90 hip transitions', 3, '8/side', '', '', '', ['—', 'done']),
-            X('Couch stretch', 2, '60s/side', '', '', '', ['—', 'sec']),
-            X('Adductor rock-back', 2, '10', '', '', '', ['—', 'done']),
-            X('T-spine: open book + floor extension', 3, '6 min', '', '',
-              'Feeds straight into the shoulder block above — you cannot get overhead through a stiff mid-back.', ['—', 'done']),
-            X('Balance + short-foot hold', 3, '30s', '', '', 'Single leg, eyes closed.', ['—', 'sec']),
-          ],
-        },
-        {
-          label: 'NOTE',
-          items: [
-            X('Reset is not a day off', 1, '—', '', '',
-              'You still run, and it is the LONGEST run of the cycle. What rests is the lifting. Legs A was yesterday and Push B is tomorrow — the right leg never gets two loaded days back to back.', ['—', 'ok']),
-            X('No end-range calf stretching', 1, '—', '', '',
-              'Pre-gate only. Insertional compression aggravates tendinopathy.', ['—', 'ok']),
-          ],
-        },
+    recovery: {
+      title: 'RECOVERY', short: 'RECOV', time: '~40 min, all light',
+      warmup: 'Nothing here should feel hard. Finish with 3 min of foam rolling and the stretch block.',
+      exercises: [
+        { id: 'decline_situp', name: 'Decline sit-up', cue: 'Adjustable bench set to decline, feet hooked.', rest: '0:45',
+          stages: [S('Bodyweight', 3, 12, 20, 2), S('10 lb plate at your chest', 3, 12, 20, 2)] },
+        { id: 'side_bend', name: 'Side bend on the 45° back extension', cue: 'Hip side-on to the pad.', rest: '0:30', perSide: 'each side',
+          stages: [S('Bodyweight', 3, 12, 20, 2), S('Holding a 10 lb plate', 3, 12, 20, 2)] },
+        { id: 'copenhagen', name: 'Copenhagen side plank', rest: '0:30', perSide: 'each side', unit: 'secs',
+          stages: [S('Knee on the bench', 3, 20, 40, 5), S('Ankle on the bench', 3, 20, 40, 5)] },
+        { id: 'carry', name: 'Suitcase carry', cue: 'Laps of the garage.', rest: '0:45', perSide: 'each side', unit: 'm',
+          stages: [S('One DB', 2, 30, 30, 0, { weights: [55, 60] }),
+                   S('One 60 lb DB, further', 2, 40, 100, 10, { weights: [60] })] },
+        { id: 'sl_calf', name: 'Single-leg calf raise', cue: 'Off the step, 3s down, 2s pause at the bottom. The right leg sets the reps; the left never does more.', rest: '0:30', perSide: 'each leg', tags: ['legs'],
+          stages: [S('Bodyweight', 3, 12, 15), S('Holding a DB', 3, 12, 15, 1, { weights: dbFrom(5, 40) })] },
+        { id: 'abduction', name: 'Side-lying band hip abduction', rest: '0:30', perSide: 'each side',
+          stages: bands(['Light', 'Medium', 'Heavy'], 3, 15, 25, 2) },
+        { id: 'wrist_curl', name: 'DB wrist curl', cue: 'Forearms on the bench, palms up.', rest: '0:30', guess: true,
+          stages: [S('DB', 2, 15, 25, 2, { weights: dbFrom(20, 40) })] },
+        { id: 'rev_wrist_curl', name: 'Reverse wrist curl', cue: 'Forearms on the bench, palms down.', rest: '0:30', guess: true,
+          stages: [S('DB', 2, 15, 25, 2, { weights: dbFrom(10, 35) })] },
+        { id: 'neck_side', name: 'Band neck side bend', cue: 'Anchored to the side.', rest: '0:30', perSide: 'each side',
+          stages: bands(['Light', 'Medium', 'Heavy'], 2, 15, 25, 2) },
+        { id: 'ankle_inv', name: 'Band ankle inversion', rest: '0:30', perSide: 'each side',
+          stages: [S('Band', 2, 15, 15, 0)] },
       ],
     },
+  },
 
-    /* =============================================== D5 PUSH B */
-    {
-      id: 'd5', name: 'Day 5', short: '5', title: 'PUSH B', sub: 'Incline / volume · normal run',
-      sections: [
-        WARMUP('push'),
-        {
-          label: 'LIFT',
-          items: [
-            X('Incline barbell press', 4, '6-8', '175-195', '2:30', 'The upper-chest shelf. Bench at 30 degrees, not 45 — steeper turns it into a shoulder press.'),
-            X('Flat DB press', 3, '10-12', '2x60', '90s'),
-            X('Seated neutral-grip DB OHP', 3, '10-12', '', '90s',
-              'The volume version of D1. Seated, back support, neutral grip, stop the moment the range gets sharp. If the shoulder screen failed this morning, SKIP IT and do a 4th set of flat DB press instead.'),
-            X('Lateral raise', 4, '15-20', '', '60s', 'Shoulder height, no higher.'),
-            X('Skull crusher', 3, '10-12', '', '60s'),
-          ],
-        },
-        {
-          label: 'ABS — rectus under stretch',
-          items: [
-            X('Bench stretch crunch', 4, '12-15', 'bw', '45s',
-              'The one you actually like, so it stayed. Bench at 20-30 degrees, shoulder blades level with the top edge, head and upper back draped back over it. THE BOTTOM IS THE POINT — a muscle grows most where it is loaded long.'),
-            X('Band Pallof press', 3, '12/side', 'light', '30s', 'Light. Anti-rotation only, never heavy.'),
-          ],
-        },
-      ],
-    },
-
-    /* =============================================== D6 PULL B */
-    {
-      id: 'd6', name: 'Day 6', short: '6', title: 'PULL B', sub: 'Volume · normal run',
-      sections: [
-        WARMUP('pull'),
-        {
-          label: 'LIFT',
-          items: [
-            X('Chin-up', 4, 'AMRAP-1', 'bw', '2:00'),
-            X('1-arm DB row', 4, '10-12', '60', '75s', '1s pause at the top.'),
-            X('Band pullover', 3, '15', 'band', '60s', 'Anchor over the pull-up bar.'),
-            X('Rear delt fly', 4, '20', '', '45s', 'Never skipped. Rear delt and lower trap volume is what keeps the front of the shoulder out of trouble.'),
-            X('Hammer curl', 3, '12', '', '45s'),
-          ],
-        },
-        {
-          label: 'ABS — max lever, eccentric',
-          items: [
-            X('Slider bodysaw', 4, '8-10', 'bw', '60s',
-              'REPLACES THE DRAGON FLAG. Forearm plank, feet on sliders. Push yourself back until the shoulders are behind the elbows, then drag in. 3s out. Ribs down and hips level the whole time — the moment the lower back sags the set is over. Ladder: short range, then full range, then feet on the 18in box.'),
-            X('Slow dead bug', 3, '8/side', 'bw', '45s',
-              'Opposite arm and leg, 3s out and 3s back, lower back GLUED to the floor the whole time. The moment it lifts, shorten the range. This is the control counterpart to the bodysaw — same anti-extension job, limbs moving instead of the body. Progress by lever length, then by a 3s pause at full reach.'),
-          ],
-        },
-      ],
-    },
-
-    /* =============================================== D7 LEGS B */
-    {
-      id: 'd7', name: 'Day 7', short: '7', title: 'LEGS B', sub: 'Unilateral / posterior, RPE 7 · SHORTEST run',
-      sections: [
-        WARMUP('legs'),
-        {
-          label: 'LIFT',
-          items: [
-            X('Rear-foot-elevated split squat', 4, '8/leg', '50-60', '90s',
-              'RIGHT LEG LEADS and sets the reps. Front foot flat, no bounce.'),
-            X('Barbell hip thrust', 4, '10', '', '90s'),
-            X('Tempo goblet squat', 3, '10', 'KB 40', '75s', '3s down.'),
-            X('Heel-elevated front-rack DB squat', 3, '10-12', '', '75s', 'Quad-biased, no ankle push-off.'),
-            X('Single-leg RDL', 3, '10/leg', '', '75s', 'Slow. NEVER to failure.'),
-            X('Standing straight-knee SL calf raise', 4, '10', '', '60s',
-              'LAST in the session. 3s up / 3s down. Right leads.'),
-          ],
-        },
-      ],
-    },
-
-    /* =============================================== D8 RESET + GATE */
-    {
-      id: 'd8', name: 'Day 8', short: '8', rest: true, title: 'RESET + GATE', sub: 'Mobility, shoulder, the tests · LONGEST run',
-      sections: [
-        WARMUP('reset'),
-        SHOULDER(),
-        {
-          label: 'MOBILITY — 20 min',
-          items: [
-            X('Half-kneeling knee-to-wall', 3, '10/side', '', '', 'REHAB, not stretching.', ['—', 'done']),
-            X('90/90 hip transitions', 3, '8/side', '', '', '', ['—', 'done']),
-            X('Couch stretch', 2, '60s/side', '', '', '', ['—', 'sec']),
-            X('T-spine: open book + floor extension', 3, '5 min', '', '', '', ['—', 'done']),
-            X('Balance + short-foot hold', 3, '30s', '', '', 'Single leg, eyes closed.', ['—', 'sec']),
-          ],
-        },
-        {
-          label: 'CALF GATE TEST — log every cycle',
-          items: [
-            X('Heel raise to failure — STRAIGHT knee, LEFT', 1, 'max', '', '',
-              'Off a step, full ROM, 2s up / 2s down. Stop at the first loss of height.', ['—', 'reps']),
-            X('Heel raise to failure — STRAIGHT knee, RIGHT', 1, 'max', '', '',
-              'GATE = right within 10% of left.', ['—', 'reps']),
-            X('Heel raise to failure — BENT knee, LEFT', 1, 'max', '', '',
-              'Soleus. This is the running-specific one.', ['—', 'reps']),
-            X('Heel raise to failure — BENT knee, RIGHT', 1, 'max', '', '',
-              'GATE = right within 10% of left.', ['—', 'reps']),
-            X('Knee-to-wall — LEFT', 1, 'inches', '', '', '', ['—', 'in']),
-            X('Knee-to-wall — RIGHT', 1, 'inches', '', '', 'Target: within half an inch of left.', ['—', 'in']),
-            X('Morning stiffness — clear days this cycle', 1, '0-8', '', '',
-              'First 10 steps out of bed. Need 10 straight clear days before mileage moves.', ['—', 'days']),
-          ],
-        },
-        OHP_TEST(),
-      ],
-    },
+  stretch: [
+    'Couch stretch, back foot on the bench: 45s each side',
+    '90/90 hip switches: 60s',
+    'Hamstring, heel on the bench: 45s each side',
+    'Wall calf stretch, straight knee then bent knee: 30s each, each side',
+    'Pec stretch, forearm on a rack upright: 45s each side',
   ],
+
+  /* tests by cycle; each key is one input */
+  tests: {
+    1: ['weight', 'waist', 'broad_jump', 'max_pullups', 'max_chinups', 'heel_r_straight', 'heel_l_straight', 'heel_r_bent', 'heel_l_bent'],
+    7: ['weight', 'waist', 'heel_r_straight', 'heel_l_straight', 'heel_r_bent', 'heel_l_bent'],
+    14: ['weight', 'waist', 'broad_jump', 'max_pullups', 'max_chinups', 'heel_r_straight', 'heel_l_straight', 'heel_r_bent', 'heel_l_bent', 'bench_repout', 'fs_repout', 'tt_5k'],
+  },
+  testLabels: {
+    weight: 'Weight, 3-morning average (lb)', waist: 'Waist at the belly button (in)',
+    broad_jump: 'Standing broad jump, best of 3 (in)',
+    max_pullups: 'Max pull-ups', max_chinups: 'Max chin-ups',
+    heel_r_straight: 'Heel raises · RIGHT · straight knee', heel_l_straight: 'Heel raises · LEFT · straight knee',
+    heel_r_bent: 'Heel raises · RIGHT · bent knee', heel_l_bent: 'Heel raises · LEFT · bent knee',
+    bench_repout: 'Bench: reps to near-failure at working weight',
+    fs_repout: 'Front squat: reps to near-failure at working weight',
+    tt_5k: '5k time trial, day 53 (mm:ss)',
+  },
 };
 
 if (typeof window !== 'undefined') window.PROGRAM = PROGRAM;
-if (typeof module !== 'undefined') module.exports = { PROGRAM };
+if (typeof module !== 'undefined') module.exports = { PROGRAM: PROGRAM, BAR: BAR };

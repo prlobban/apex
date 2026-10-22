@@ -1,19 +1,17 @@
 /* ============================================================
    APEX — black & white, system font, no ornament.
    ============================================================ */
-
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
   --ink: #000;
   --paper: #fff;
-  --rule: #000;
-  --soft: #666;
-  --hair: #d4d4d4;
+  --soft: #6b6b6b;
+  --hair: #dcdcdc;
+  --wash: #f4f4f4;
 }
 
 html { -webkit-text-size-adjust: 100%; }
-
 body {
   margin: 0;
   background: var(--paper);
@@ -21,252 +19,143 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.45;
-  padding-bottom: 4rem;
   -webkit-font-smoothing: antialiased;
+  padding-bottom: calc(3rem + env(safe-area-inset-bottom));
 }
+button { font: inherit; color: inherit; cursor: pointer; }
+main { max-width: 34rem; margin: 0 auto; padding: 0 1rem; }
 
-/* ---------- day nav ---------- */
-.daynav {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
+/* ---------- top bar ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 0.75rem;
+  margin: 0 -1rem; padding: calc(0.6rem + env(safe-area-inset-top)) 1rem 0.6rem;
   background: var(--paper);
-  border-bottom: 2px solid var(--rule);
-  padding-top: env(safe-area-inset-top);
+  border-bottom: 2px solid var(--ink);
 }
-
-.daybtn {
-  appearance: none;
-  background: var(--paper);
-  color: var(--soft);
-  border: 0;
-  border-right: 1px solid var(--hair);
-  padding: 0.85rem 0 0.75rem;
-  font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  cursor: pointer;
+.brand { display: flex; align-items: center; gap: 0.45rem; font-weight: 900; letter-spacing: 0.14em; font-size: 0.8125rem; }
+.brand img { width: 1.6rem; height: 1.6rem; border-radius: 0.35rem; display: block; }
+.stepper { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.25rem; }
+.step {
+  appearance: none; border: 1px solid var(--ink); background: var(--paper);
+  width: 2.25rem; height: 2.25rem; font-size: 1.25rem; line-height: 1; font-weight: 700;
 }
-.daybtn:last-child { border-right: 0; }
-.daybtn.on {
-  background: var(--ink);
-  color: var(--paper);
+.datebtn {
+  appearance: none; border: 0; background: none;
+  font-weight: 800; font-size: 0.875rem; letter-spacing: 0.02em; min-width: 7.5rem;
 }
-/* rest days read lighter; today gets a rule under it */
-.daybtn.isrest { font-weight: 400; }
-.daybtn.istoday { box-shadow: inset 0 -4px 0 var(--ink); }
-.daybtn.istoday.on { box-shadow: inset 0 -4px 0 var(--paper); }
+.syncdot { appearance: none; width: 0.85rem; height: 0.85rem; border-radius: 50%; border: 2px solid var(--ink); background: var(--ink); padding: 0; }
+.syncdot.wait, .syncdot.busy { background: var(--paper); }
+.syncdot.off { background: var(--paper); border-style: dashed; }
 
-/* ---------- cycle position ---------- */
-.cyclerow {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.6rem;
+/* ---------- header ---------- */
+.dayhead { padding: 1.4rem 0 1rem; border-bottom: 2px solid var(--ink); }
+.big { margin: 0.2rem 0 0; font-size: 2.6rem; line-height: 1; letter-spacing: -0.03em; font-weight: 900; }
+.meta { margin: 0.5rem 0 0; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.soft { color: var(--soft); margin: 0.25rem 0 0; }
+.small { font-size: 0.8125rem; }
+.tagrow { display: flex; gap: 0.35rem; flex-wrap: wrap; min-height: 1.2rem; }
+.tag {
+  display: inline-block; font-size: 0.625rem; font-weight: 800; letter-spacing: 0.12em;
+  border: 1px solid var(--ink); padding: 0.15rem 0.4rem;
 }
+.tag.solid { background: var(--ink); color: var(--paper); }
 
-.cyclenote {
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--soft);
+.banner { margin-top: 1rem; padding: 0.75rem 0.85rem; background: var(--ink); color: var(--paper); font-size: 0.875rem; }
+
+/* ---------- cards ---------- */
+.card { padding: 1.15rem 0; border-bottom: 1px solid var(--hair); }
+.card.center { text-align: center; padding: 3rem 0; }
+.label {
+  margin: 0 0 0.5rem; font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
 }
+.sub { margin: 0.7rem 0 0.35rem; font-size: 0.8125rem; font-weight: 700; }
+.body p { margin: 0 0 0.3rem; font-size: 0.9375rem; }
+.between { margin: 0.9rem 0 0; font-size: 0.8125rem; font-weight: 700; color: var(--soft); }
+.warn { margin: 0.4rem 0; padding: 0.4rem 0.6rem; border-left: 3px solid var(--ink); font-size: 0.8125rem; font-weight: 600; }
+.ok { margin: 0.4rem 0; font-size: 0.8125rem; font-weight: 700; }
 
-.synclink {
-  appearance: none;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--soft);
-  padding: 0;
-  font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  color: var(--soft);
-  cursor: pointer;
-  white-space: nowrap;
+/* feet score */
+.scores { display: grid; grid-template-columns: repeat(11, 1fr); gap: 0.2rem; }
+.score {
+  appearance: none; border: 1px solid var(--ink); background: var(--paper);
+  height: 2.3rem; font-size: 0.8125rem; font-weight: 700; padding: 0;
 }
+.score.mid { border-width: 2px; }
+.score.hi { border-width: 2px; border-style: dashed; }
+.score.on { background: var(--ink); color: var(--paper); border-style: solid; }
 
-/* ---------- day header ---------- */
-main { padding: 0 1rem; max-width: 34rem; margin: 0 auto; }
+/* fields */
+.fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; margin-top: 0.5rem; }
+.field { display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.4rem; }
+.flabel { font-size: 0.6875rem; font-weight: 700; color: var(--soft); letter-spacing: 0.02em; }
+.field .box, .datein { border: 1px solid var(--ink); padding: 0.55rem 0.5rem; }
 
-.dayhead { padding: 1.5rem 0 1rem; border-bottom: 2px solid var(--rule); }
-
-.dayhead-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
+.tickline {
+  appearance: none; background: none; border: 0; padding: 0; margin-top: 0.7rem;
+  display: flex; align-items: center; gap: 0.55rem; font-size: 0.875rem; font-weight: 700;
 }
-
-.dayhead h1 {
-  margin: 0;
-  font-size: 2rem;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
-  font-weight: 800;
-}
-
-.daylabel {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--soft);
-  white-space: nowrap;
-}
-
-.daysub { margin: 0.35rem 0 0; font-size: 0.9375rem; color: var(--soft); }
-
-.startrow {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-  flex-wrap: wrap;
-}
-
-.startbtn {
-  appearance: none;
-  background: var(--ink);
-  color: var(--paper);
-  border: 2px solid var(--ink);
-  padding: 0.7rem 1.1rem;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-}
-.startbtn:active { background: var(--paper); color: var(--ink); }
-
-.started { font-size: 0.75rem; color: var(--soft); }
-
-/* ---------- sections ---------- */
-.seclabel {
-  margin: 2rem 0 0;
-  padding-bottom: 0.35rem;
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.6875rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
+.tick { width: 1.6rem; height: 1.6rem; border: 1px solid var(--ink); display: inline-flex; align-items: center; justify-content: center; font-weight: 900; }
+.tickline.on .tick { background: var(--ink); color: var(--paper); }
 
 /* ---------- exercise ---------- */
-.ex { padding: 1.15rem 0; border-bottom: 1px solid var(--hair); }
+.exhead { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.exname { font-size: 1.125rem; font-weight: 800; line-height: 1.2; }
+.version { margin-top: 0.15rem; font-size: 0.875rem; font-weight: 700; }
+.rx { margin-top: 0.25rem; font-size: 0.9375rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cue { margin-top: 0.4rem; font-size: 0.8125rem; color: var(--soft); }
+.guess { margin-top: 0.5rem; padding: 0.45rem 0.6rem; background: var(--wash); font-size: 0.8125rem; }
+.rule { margin-top: 0.6rem; font-size: 0.75rem; color: var(--soft); }
+.ex.explosive { border-left: 4px solid var(--ink); padding-left: 0.75rem; margin-left: -1rem; padding-right: 0; }
 
-.exname { font-size: 1.0625rem; font-weight: 700; line-height: 1.25; }
-
-.exrx {
-  margin-top: 0.2rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--soft);
-  font-variant-numeric: tabular-nums;
-}
-
-.exnote {
-  margin-top: 0.5rem;
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  color: var(--ink);
-  border-left: 2px solid var(--ink);
-  padding-left: 0.6rem;
-}
-
-/* ---------- set rows ---------- */
-.sets { margin-top: 0.85rem; display: flex; flex-direction: column; gap: 0.4rem; }
-
+.sets { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.4rem; }
 .setrow { display: flex; align-items: center; gap: 0.5rem; }
-
-.setno {
-  width: 1.25rem;
-  flex: none;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--soft);
-  font-variant-numeric: tabular-nums;
+.setno { width: 1.1rem; flex: none; font-size: 0.75rem; font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+.fieldbox {
+  flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 0.35rem;
+  border: 1px solid var(--ink); padding: 0 0.5rem;
 }
-
-.field {
-  flex: 1 1 0;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  border: 1px solid var(--ink);
-  padding: 0 0.5rem;
-  min-width: 0;
-}
-
-.boxpad { flex: 1 1 0; }
-
-.tickpad { flex: 1 1 0; }
-
 .box {
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  font-size: 1rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  padding: 0.6rem 0;
+  flex: 1 1 auto; width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink);
+  font: inherit; font-size: 1.0625rem; font-weight: 700; font-variant-numeric: tabular-nums; padding: 0.6rem 0;
 }
-
-.unit {
-  flex: none;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--soft);
-}
-
+.box::placeholder { color: #b5b5b5; }
+.unit { flex: none; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--soft); }
 .check {
-  flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  appearance: none;
-  background: var(--paper);
-  color: var(--paper);
-  border: 1px solid var(--ink);
-  font: inherit;
-  font-size: 1.125rem;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
+  flex: none; width: 2.75rem; height: 2.75rem; appearance: none; background: var(--paper); color: var(--paper);
+  border: 1px solid var(--ink); font-size: 1.125rem; font-weight: 900; line-height: 1;
 }
-.check.on { background: var(--ink); color: var(--paper); }
+.check.on { background: var(--ink); }
 
-/* ---------- export footer ---------- */
-.foot {
-  display: flex;
-  gap: 1.25rem;
-  padding: 1.75rem 0 1rem;
+/* jumps */
+.jumprow { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.55rem 0; border-top: 1px solid var(--hair); }
+.jumprow:first-of-type { border-top: 0; }
+.jumprow .exname { font-size: 1rem; }
+.jumprow .rx { font-size: 0.8125rem; }
+
+/* tests fold shut */
+details.tests summary { cursor: pointer; list-style: none; margin: 0; }
+details.tests summary::-webkit-details-marker { display: none; }
+details.tests summary::after { content: ' +'; }
+details.tests[open] summary::after { content: ' −'; }
+
+/* notes */
+.notes {
+  width: 100%; border: 1px solid var(--ink); padding: 0.6rem; font: inherit; font-size: 0.9375rem; resize: vertical;
+  background: var(--paper); color: var(--ink);
 }
 
+/* buttons */
+.btnrow { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.btn { appearance: none; flex: 1; background: var(--ink); color: var(--paper); border: 2px solid var(--ink); padding: 0.8rem; font-weight: 800; letter-spacing: 0.1em; font-size: 0.8125rem; }
+.btn.ghost { background: var(--paper); color: var(--ink); }
+.datein { flex: 2; font: inherit; }
+
+/* footer */
+.foot { padding: 1.5rem 0 1rem; display: flex; flex-direction: column; gap: 0.8rem; }
+.syncline { font-size: 0.8125rem; font-weight: 700; }
+.linkrow { display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: baseline; }
 .linkbtn {
-  appearance: none;
-  background: none;
-  border: 0;
-  border-bottom: 1px solid var(--ink);
-  padding: 0 0 0.15rem;
-  font: inherit;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  color: var(--ink);
-  cursor: pointer;
+  appearance: none; background: none; border: 0; border-bottom: 1px solid var(--ink); padding: 0 0 0.15rem;
+  font-size: 0.6875rem; font-weight: 800; letter-spacing: 0.1em;
 }
-
-.offscreen { position: absolute; left: -9999px; opacity: 0; }

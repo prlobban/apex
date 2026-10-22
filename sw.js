@@ -1,11 +1,11 @@
-/* APEX service worker — offline-first cache.
-   Bump CACHE whenever app files change so clients pull fresh. */
-const CACHE = 'apex-v6';
+/* APEX service worker — the app shell works offline.
+   The API is never cached: sets wait in the phone's outbox instead.
+   Bump CACHE whenever app files change so phones pull fresh. */
+const CACHE = 'apex-v8';
 const ASSETS = [
-  './', './index.html', './styles.css',
-  './program.js', './app.js',
+  './', './index.html', './styles.css', './program.js', './engine.js', './app.js',
   './manifest.webmanifest',
-  './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
+  './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', e => {
@@ -19,9 +19,9 @@ self.addEventListener('activate', e => {
   );
 });
 
-// network-first for app files (fresh on reload when online), cache fallback offline
+// network-first for app files, cache fallback offline; never touch /api/
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || new URL(e.request.url).pathname.startsWith('/api/')) return;
   e.respondWith(
     fetch(e.request).then(res => {
       const copy = res.clone();

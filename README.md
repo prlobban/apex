@@ -1,90 +1,44 @@
 # APEX
 
-Pearce's training app. A PWA with eight pages — **an 8-day rotating cycle, not a week** — and
-nothing else.
+Pearce's training app for the **APEX Hybrid** 8-week block: Pull, Push, Legs, Recovery, repeated 14 times.
 
-Live: https://prlobban.github.io/apex/
+Live (tailnet only): **https://ronin.tail91327e.ts.net**. Install on iPhone: open it in Safari with Tailscale on, then Share → Add to Home Screen.
 
-## What it is
+## How it works
 
-```
-D1 PUSH A   D2 PULL A   D3 LEGS A   D4 RESET
-D5 PUSH B   D6 PULL B   D7 LEGS B   D8 RESET + GATE
-```
+- **One screen per date.** The block start date ("Day 1") decides which session a date is. ‹ › step through days. **SLIDE A DAY** pushes the block back one day for a red or missed day.
+- **Every exercise shows today's target**, worked out by `engine.js` from what was actually logged last time:
+  - all sets hit → add reps
+  - top of the range → next weight on the ladder, or the next harder version
+  - below the low number twice → one step back
+  - easy weeks (cycles 7 and 14) halve the sets and don't count toward progression
+  - feet at 3+ this week → leg rep adds hold
+- **Tap ✓ on an empty set** to log the target as done. Type a different weight and that becomes the new baseline.
+- **Every day has a notes box** for feedback. Each morning also takes a foot score (0-10), the run and weight/waist.
+- **Tests** (cycles 1, 7, 14) fold out at the bottom. The week-4 heel-raise test gates the single-leg jumps.
 
-**Rest lands on every 4th day**, so the cycle drifts through the calendar week. That is
-deliberate — the program is on a 4-day rhythm and the week is not.
+## Storage
 
-"Today" is derived from an anchor date in storage (the date that was Day 1). The nav marks
-today with an underline; the header says which day today actually is. Miss a day or shuffle
-one and **MAKE TODAY** on the day you're really on re-anchors the whole cycle.
-
-Each page opens with a **day-specific warm-up**, then lists that day's exercises with a target
-(`sets x reps`, load, rest), a note where the cue matters, and a row per set with two boxes and
-a tick. **START DAY FRESH** wipes that day and stamps a new start time.
-
-**Running is not in this app**, and neither is the foot/ankle prehab block — that runs before
-the run, so it lives with the run in the vault doc, not here.
-
-At the bottom of every day: **EXPORT JSON** (downloads) and **COPY JSON** (clipboard — the
-one that actually works in a standalone PWA on iOS). Both dump the whole cycle, not just the
-day on screen, and the output is self-describing: day, section, exercise, prescribed line,
-then the logged sets, plus the cycle anchor. That's the handoff back to Astra.
-
-That's the whole app. No timer, no today view, no profile, no charts.
+- **Phone first, box second.** Every edit is saved in the phone's storage and queued. The app pushes the queue to the box whenever it can reach it, and newer edits win. The dot top-right shows the state: solid = synced, hollow = waiting, dashed = box unreachable.
+- **The box** (LXC 101 on the Dojo) runs `server/server.mjs` as the `apex` systemd service on `127.0.0.1:8787`. Data: SQLite at `/home/ronin/apex-data/apex.db`. Nightly backup at 03:30 into `apex-data/backups/`, kept 14 days, on the same disk.
+- **HTTPS** comes from `tailscale serve` (userspace mode, since the container has no TUN device).
+- **Read it:** `GET /api/export` for JSON, or `ssh ronin-ct sqlite3 ~/apex-data/apex.db` for SQL. Tables: `sets`, `days` (notes, foot, run, weight, waist), `tests`, `meta` (the Day 1 anchor).
 
 ## Files
 
 | File | What it holds |
 |---|---|
-| `program.js` | **The plan.** Data only — this is the file you edit. |
-| `app.js` | Cycle arithmetic, render, localStorage logging. Knows nothing about plan content. |
-| `styles.css` | Black & white, system font. |
-| `index.html` | Shell: day nav + `<main>`. |
-| `sw.js` | Offline cache. **Bump `CACHE` when app files change.** |
-| `tools/generate-icons.mjs` | Regenerates the icons (black tile, white barbell). |
+| `program.js` | **The plan.** Exercises, version lists, weight ladders, jumps, running, tests. Data only. |
+| `engine.js` | Block maths and the progression rule. Pure functions, tested. |
+| `app.js` | The screen, the phone-side store and sync. |
+| `server/server.mjs` | Static files + `/api/sync`, `/api/state`, `/api/export`. Zero dependencies (`node:sqlite`). |
+| `sw.js` | Offline cache for the app shell. **Bump `CACHE` on every change.** |
+| `tools/generate-icons.mjs` | Draws the icon (peak over a barbell). `node tools/generate-icons.mjs` |
+| `smoke-test.mjs` | Engine rules, every screen, the outbox, and a server sync round-trip. `node smoke-test.mjs` |
 
-## Editing the plan
+## Deploy
 
-Everything lives in `program.js`. A day looks like:
-
-```js
-{
-  id: 'd1', name: 'Day 1', short: '1', title: 'PUSH A', sub: 'Heavy bench · normal run',
-  sections: [
-    WARMUP('push'),
-    { label: 'LIFT', items: [
-      X('Barbell bench', 5, '3-5', '205-215', '3:00', 'THE ANCHOR. 215 = 91% of your max.'),
-    ]},
-  ],
-}
+```bash
+tar -cf - index.html styles.css app.js engine.js program.js sw.js manifest.webmanifest icons server \
+  | ssh ronin-ct 'tar -xf - -C ~/apex && sudo systemctl restart apex'
 ```
-
-`X(name, sets, target, load, rest, note, cols)` — `sets` decides how many logging rows
-render. `cols` sets the two box labels and defaults to `['lb','reps']`; pass `['—','done']`
-for a done-toggle row, or `['—','sec']` / `['—','reps']` for a single-value row.
-
-`WARMUP(kind)` takes `push | pull | legs | reset` and builds the day-specific warm-up.
-`SHOULDER()` is the right-shoulder rehab block on both reset days. `OHP_TEST()` is the
-return-to-overhead-pressing test on D8.
-
-Add `rest: true` to a day to mark it in the nav. The cycle length is just
-`PROGRAM.days.length` — add or remove days and the arithmetic follows.
-
-After editing app files, bump `CACHE` in `sw.js` so installed clients pull the new version.
-
-## Dev
-
-```
-npx http-server -p 8137     # serve
-node smoke-test.mjs         # render + persistence + cycle + veto check
-node tools/generate-icons.mjs
-```
-
-## Storage
-
-`localStorage` only, keyed `apex.v3.<dayId>`, plus `apex.v3.anchor` for the cycle. Per-device,
-no sync. Clearing site data wipes the logs — export first if you care about them.
-
-> The key moved `v2` → `v3` with the 8-day rebuild, so old Mon–Sun logs are orphaned rather
-> than migrated. They were per-slot and overwritten each session anyway.
